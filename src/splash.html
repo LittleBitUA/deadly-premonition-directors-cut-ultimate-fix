@@ -239,10 +239,29 @@
       <div class="logo-sweep"></div>
     </div>
 
-    <div class="title">Раді Вас знову бачити!</div>
-    <div class="subtitle">Зачекайте будь ласка, відбувається<br>завантаження лаунчеру…</div>
+    <div class="title" id="splash-title">Раді Вас знову бачити!</div>
+    <div class="subtitle" id="splash-sub">Зачекайте будь ласка, відбувається<br>завантаження лаунчеру…</div>
 
     <div class="progress"></div>
   </div>
+
+  <script>
+    (function () {
+      var lang = (new URLSearchParams(location.search)).get('lang') || 'en';
+      var T = {
+        uk: {
+          title: 'Раді Вас знову бачити!',
+          sub:   'Зачекайте будь ласка, відбувається<br>завантаження лаунчеру…',
+        },
+        en: {
+          title: 'Glad to see you again!',
+          sub:   'Please wait, the launcher is<br>loading…',
+        },
+      };
+      var t = T[lang] || T.en;
+      document.getElementById('splash-title').textContent = t.title;
+      document.getElementById('splash-sub').innerHTML     = t.sub;
+    })();
+  </script>
 </body>
 </html>

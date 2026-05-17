@@ -141,7 +141,18 @@ function createSplashWindow() {
       nodeIntegration:  false,
     },
   });
-  splashWindow.loadFile(path.join(__dirname, 'src', 'splash.html'));
+  // Pick splash language synchronously so the title text is correct from
+  // the very first paint (avoid a UA→EN flip).
+  let lang = 'en';
+  try {
+    const raw = require('fs').readFileSync(getSettingsPath(), 'utf-8');
+    const s = JSON.parse(raw);
+    if (s.language === 'uk' || s.language === 'en') lang = s.language;
+  } catch {
+    try { if ((app.getLocale() || '').startsWith('uk')) lang = 'uk'; } catch {}
+  }
+  splashWindow.loadFile(path.join(__dirname, 'src', 'splash.html'),
+                         { search: '?lang=' + lang });
   splashWindow.once('ready-to-show', () => splashWindow.show());
   splashWindow.on('closed', () => { splashWindow = null; });
 }
@@ -179,22 +190,7 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, 'src', 'index.html'));
   mainWindow.on('closed', () => { mainWindow = null; });
 
-  // DevTools is OFF by default — press F12 in dev to open.
-
-  // Dev shortcuts: F12 toggles DevTools, Ctrl+Shift+I does the same,
-  // Ctrl+R reloads the renderer (useful when editing CSS live).
-  mainWindow.webContents.on('before-input-event', (event, input) => {
-    if (input.type !== 'keyDown') return;
-    const k = (input.key || '').toLowerCase();
-    if (k === 'f12' ||
-        (input.control && input.shift && k === 'i')) {
-      mainWindow.webContents.toggleDevTools();
-      event.preventDefault();
-    } else if (input.control && k === 'r') {
-      mainWindow.webContents.reload();
-      event.preventDefault();
-    }
-  });
+  // DevTools is fully disabled for distribution.
 }
 
 /**
