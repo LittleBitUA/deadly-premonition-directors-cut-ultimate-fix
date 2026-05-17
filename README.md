@@ -16,54 +16,6 @@ _Сучасний фанатський лаунчер для_ **Deadly Premoniti
 
 ---
 
-## 🇺🇦 Українською
-
-Одне натискання LAUNCH замість години ритуалу з DPfix, патчем 4GB та DXVK.
-Лаунчер сам завантажує, встановлює й налаштовує все необхідне.
-
-### Можливості
-
-- 🎮 **Запуск гри через Steam** одним кліком (`steam://run/247660`)
-- 🔧 **Автоматична настройка** — DPFix v0.9.5, 4GB LAA Patch, DXVK 2.7.1 ставляться під час першого запуску
-- 🔍 **Авто-пошук гри у Steam-бібліотеках** (registry + парсинг `libraryfolders.vdf`)
-- 🎨 **Liquid-glass UI** — темний кінематографічний інтерфейс із червоними акцентами, атмосфера Greenvale
-- ⚙️ **Редагування DPfix.ini** — AA, тіні, SSAO, DoF, роздільна здатність, режим екрана, частота
-- 💾 **Автоматичні бекапи збережень** кожні 2 хвилини + швидке відновлення в один клік
-- 🪟 **Режим сумісності Windows** — XP SP3 або Windows 98 / Me через реєстр
-- 📰 **GitHub-стрічка новин** — лаунчер тягне `news.json` із цього репо
-- 🔔 **Перевірка оновлень** через GitHub Releases API
-- 🇺🇦🇬🇧 **Дві мови** — українська та англійська
-
-### Що використовується
-
-| Компонент       | Автор                            | Призначення                                   |
-|-----------------|----------------------------------|-----------------------------------------------|
-| **DPFix v0.9.5**| Peter «Durante» Thoman           | Графічний фіксер для гри                       |
-| **4GB Patch**   | NTCore (Daniel Pistelli)         | Зняття обмеження 2 ГБ ОЗП                      |
-| **DXVK 2.7.1**  | Philip «doitsujin» Rebohle       | Vulkan-рендерер для D3D9                       |
-
-### Встановлення
-
-1. Завантажте останню версію з [Releases](https://github.com/LittleBitUA/DP1-Launcher/releases)
-2. Розпакуйте архів у будь-яку папку
-3. Запустіть `DP1 Launcher.exe`
-4. Лаунчер сам знайде гру у Steam і запропонує встановити компоненти
-
-> **Вимоги:** Windows 10 (1803+) або Windows 11, інстальована гра в Steam.
-
-### Розробка
-
-```bash
-npm install
-npm start              # запуск у dev-режимі
-npm run pack           # портативний білд (electron-packager)
-```
-
-Стек: **Electron** (vanilla JS, без React/фреймворків), worker-threads для INI-I/O,
-вбудований Windows `tar.exe` для розпакування `.tar.gz`, PowerShell для роботи з реєстром.
-
----
-
 ## 🇬🇧 In English
 
 One LAUNCH click instead of an hour-long ritual with DPfix, 4GB Patch and DXVK.
@@ -109,6 +61,54 @@ npm run pack           # portable build (electron-packager)
 
 Stack: **Electron** (vanilla JS, no React/frameworks), worker-threads for INI I/O,
 Windows-built-in `tar.exe` for `.tar.gz` extraction, PowerShell for registry ops.
+
+---
+
+## 🇺🇦 Українською
+
+Одне натискання LAUNCH замість години ритуалу з DPfix, патчем 4GB та DXVK.
+Лаунчер сам завантажує, встановлює й налаштовує все необхідне.
+
+### Можливості
+
+- 🎮 **Запуск гри через Steam** одним кліком (`steam://run/247660`)
+- 🔧 **Автоматична настройка** — DPFix v0.9.5, 4GB LAA Patch, DXVK 2.7.1 ставляться під час першого запуску
+- 🔍 **Авто-пошук гри у Steam-бібліотеках** (registry + парсинг `libraryfolders.vdf`)
+- 🎨 **Liquid-glass UI** — темний кінематографічний інтерфейс із червоними акцентами, атмосфера Greenvale
+- ⚙️ **Редагування DPfix.ini** — AA, тіні, SSAO, DoF, роздільна здатність, режим екрана, частота
+- 💾 **Автоматичні бекапи збережень** кожні 2 хвилини + швидке відновлення в один клік
+- 🪟 **Режим сумісності Windows** — XP SP3 або Windows 98 / Me через реєстр
+- 📰 **GitHub-стрічка новин** — лаунчер тягне `news.json` із цього репо
+- 🔔 **Перевірка оновлень** через GitHub Releases API
+- 🇺🇦🇬🇧 **Дві мови** — українська та англійська
+
+### Що використовується
+
+| Компонент       | Автор                            | Призначення                                   |
+|-----------------|----------------------------------|-----------------------------------------------|
+| **DPFix v0.9.5**| Peter «Durante» Thoman           | Графічний фіксер для гри                       |
+| **4GB Patch**   | NTCore (Daniel Pistelli)         | Зняття обмеження 2 ГБ ОЗП                      |
+| **DXVK 2.7.1**  | Philip «doitsujin» Rebohle       | Vulkan-рендерер для D3D9                       |
+
+### Встановлення
+
+1. Завантажте останню версію з [Releases](https://github.com/LittleBitUA/DP1-Launcher/releases)
+2. Розпакуйте архів у будь-яку папку
+3. Запустіть `DP1 Launcher.exe`
+4. Лаунчер сам знайде гру у Steam і запропонує встановити компоненти
+
+> **Вимоги:** Windows 10 (1803+) або Windows 11, інстальована гра в Steam.
+
+### Розробка
+
+```bash
+npm install
+npm start              # запуск у dev-режимі
+npm run pack           # портативний білд (electron-packager)
+```
+
+Стек: **Electron** (vanilla JS, без React/фреймворків), worker-threads для INI-I/O,
+вбудований Windows `tar.exe` для розпакування `.tar.gz`, PowerShell для роботи з реєстром.
 
 ---
 

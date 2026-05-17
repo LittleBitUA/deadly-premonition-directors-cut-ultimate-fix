@@ -5,6 +5,42 @@
   "nav.home": "HOME",
   "nav.settings": "SETTINGS",
 
+  "topbar.downloads":     "Downloads",
+  "topbar.downloadsEmpty":"0 Updates",
+  "topbar.notifications": "NOTIFICATIONS",
+  "topbar.notifEmpty":    "No new notifications.",
+  "topbar.downloadsHdr":  "DOWNLOADS",
+  "topbar.dlEmpty":       "No active downloads.",
+
+  "hero.gameReady":       "Game Ready",
+  "hero.setupRequired":   "Setup Required",
+
+  "tips.label": "GAME TIPS",
+
+  "dash.launcherUpdate": "LAUNCHER UPDATE",
+  "dash.latestNews":     "LATEST NEWS",
+  "dash.viewAll":        "View All",
+  "dash.saveBackups":    "SAVE BACKUPS",
+  "dash.upToDate":       "Up to date",
+  "dash.available":      "Available",
+  "dash.noBackups":      "No save backups yet.",
+
+  "settings.general":         "General",
+  "settings.graphics":        "Graphics",
+  "settings.accessibility":   "Accessibility",
+  "settings.saves":           "Saves",
+  "settings.log":             "Log",
+  "settings.about":           "About",
+  "settings.restore":         "Restore Defaults",
+  "settings.save":            "Save Changes",
+  "settings.launcherLang":    "Launcher Language",
+  "settings.launcherLangHint":"UI language of the launcher",
+  "settings.launchOpts":      "Launch Options",
+  "settings.steamOverlay":    "Enable Steam Overlay",
+  "settings.runAsAdmin":      "Run as Administrator",
+
+  "footer.authorLinks": "Author Links",
+
   "status.searching": "Searching for DPfix.ini…",
   "status.browseIni": "Choose file…",
 

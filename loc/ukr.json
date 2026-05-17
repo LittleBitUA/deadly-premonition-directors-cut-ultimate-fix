@@ -5,6 +5,42 @@
   "nav.home": "ГОЛОВНА",
   "nav.settings": "НАЛАШТУВАННЯ",
 
+  "topbar.downloads":     "Завантаження",
+  "topbar.downloadsEmpty":"0 оновлень",
+  "topbar.notifications": "СПОВІЩЕННЯ",
+  "topbar.notifEmpty":    "Нових сповіщень немає.",
+  "topbar.downloadsHdr":  "ЗАВАНТАЖЕННЯ",
+  "topbar.dlEmpty":       "Активних завантажень немає.",
+
+  "hero.gameReady": "Гра готова",
+  "hero.setupRequired": "Потрібно налаштувати",
+
+  "tips.label": "ПОРАДИ",
+
+  "dash.launcherUpdate": "ОНОВЛЕННЯ ЛАУНЧЕРА",
+  "dash.latestNews":     "ОСТАННІ НОВИНИ",
+  "dash.viewAll":        "Усі",
+  "dash.saveBackups":    "РЕЗЕРВНІ КОПІЇ",
+  "dash.upToDate":       "Актуально",
+  "dash.available":      "Доступне",
+  "dash.noBackups":      "Резервних копій поки немає.",
+
+  "settings.general":         "Загальні",
+  "settings.graphics":        "Графіка",
+  "settings.accessibility":   "Доступність",
+  "settings.saves":           "Збереження",
+  "settings.log":             "Журнал",
+  "settings.about":           "Про програму",
+  "settings.restore":         "Скинути до стандартних",
+  "settings.save":            "Зберегти зміни",
+  "settings.launcherLang":    "Мова інтерфейсу",
+  "settings.launcherLangHint":"мова інтерфейсу лаунчера",
+  "settings.launchOpts":      "Параметри запуску",
+  "settings.steamOverlay":    "Увімкнути Steam Overlay",
+  "settings.runAsAdmin":      "Запускати від адміністратора",
+
+  "footer.authorLinks": "Посилання автора",
+
   "status.searching": "Пошук DPfix.ini…",
   "status.browseIni": "Вибрати файл…",
 
