@@ -1,0 +1,41 @@
+{
+  "name": "dp1-launcher",
+  "version": "1.0.0",
+  "description": "Deadly Premonition DPFix Launcher by Little Bit",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-packager . \"DP1 Launcher\" --platform=win32 --arch=x64 --out=dist --overwrite --ignore=\"^/dist\" --ignore=\"^/dist2\" --ignore=\"^/.claude\" --ignore=\"DPfix.ini\" --ignore=\"\\.bak$\" --app-version=1.0.0 --icon=assets/DP_LOGO.ico --extra-resource=assets/4gb_patch.exe --extra-resource=assets/d9vk.dll",
+    "build": "electron-builder --win --x64",
+    "build:dir": "electron-builder --win --x64 --dir"
+  },
+  "build": {
+    "appId": "ua.littlebit.dp1-launcher",
+    "productName": "DP1 Launcher",
+    "win": {
+      "target": "nsis",
+      "icon": "assets/DP_LOGO.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "workers/**",
+      "src/**",
+      "assets/**",
+      "loc/**"
+    ],
+    "extraResources": [
+      { "from": "assets/4gb_patch.exe", "to": "4gb_patch.exe" },
+      { "from": "assets/d9vk.dll",      "to": "d9vk.dll" }
+    ]
+  },
+  "devDependencies": {
+    "@electron/packager": "^19.1.0",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  }
+}

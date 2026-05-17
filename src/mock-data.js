@@ -1,0 +1,139 @@
+'use strict';
+/**
+ * mock-data.js — Static placeholder content for the dashboard.
+ *
+ * Real data sources will replace these later:
+ *   - episodes/cases: from a localizable JSON of game chapters
+ *   - news:           from a CMS / RSS feed
+ *   - profile:        from save-file analysis
+ *   - activity:       from internal launcher activity log
+ *
+ * Exposed on window.MOCK_DATA for use by renderer.js.
+ */
+
+window.MOCK_DATA = {
+
+  // Rotating gameplay troubleshooting tips for the hero card
+  quotes: [
+    {
+      lines: [
+        'Гра вилітає на старті?',
+        'Перевірте, що 4GB Patch',
+        'застосовано — Saves → Patch.',
+      ],
+      author: 'CRASH FIX',
+    },
+    {
+      lines: [
+        'Низький FPS чи мікрофризи?',
+        'DXVK переводить гру',
+        'на Vulkan — ставте через',
+        'першозапуск.',
+      ],
+      author: 'PERFORMANCE',
+    },
+    {
+      lines: [
+        'Втратили збереження?',
+        'Лаунчер зберігає копії',
+        'кожні 2 хвилини — Settings',
+        '→ Saves → Backups.',
+      ],
+      author: 'AUTOSAVE',
+    },
+    {
+      lines: [
+        'Розмиті текстури',
+        'або погані тіні?',
+        'Settings → Graphics —',
+        'збільште Shadow / SSAO.',
+      ],
+      author: 'GRAPHICS',
+    },
+    {
+      lines: [
+        'Гра не запускається?',
+        'Спробуйте Compatibility',
+        'XP SP3 — Accessibility tab.',
+      ],
+      author: 'COMPAT',
+    },
+    {
+      lines: [
+        'Чорний екран при запуску?',
+        'Перевірте Display Mode у',
+        'Settings → Graphics. Спершу',
+        'Borderless, потім Fullscreen.',
+      ],
+      author: 'DISPLAY',
+    },
+  ],
+
+  // Episode / case file cards
+  episodes: [
+    { id: 1, code: '01', kind: 'New Case',      title: 'The Manhunt' },
+    { id: 2, code: '02', kind: 'Investigation', title: 'The Witness' },
+    { id: 3, code: '03', kind: 'Evidence',      title: 'A Peculiar Note' },
+    { id: 4, code: '04', kind: 'Twilight',      title: 'A Fork in the Road' },
+    { id: 5, code: '05', kind: 'Truth',         title: 'Coming Undone' },
+    { id: 6, code: '06', kind: 'Revelation',    title: 'A Lonely Conclusion' },
+  ],
+
+  // News feed items
+  news: [
+    {
+      title:   'Localization Update v1.0.3',
+      excerpt: 'Full English localization and UI polish improvements.',
+      date:    'May 10, 2025',
+    },
+    {
+      title:   'Fan Patch Notes',
+      excerpt: 'Stability fixes, visual tweaks, and quality of life improvements.',
+      date:    'Apr 28, 2025',
+    },
+    {
+      title:   'Community Spotlight',
+      excerpt: 'Check out amazing screenshots from the community.',
+      date:    'Apr 15, 2025',
+    },
+  ],
+
+  // User profile / saves summary
+  profile: {
+    name:      'Francis York Morgan',
+    role:      'Agent York',
+    online:    true,
+    casesDone: 22,
+    casesAll:  48,
+    playTime:  '18h 42m',
+  },
+
+  // Recent activity log
+  activity: [
+    { kind: 'completed',   text: 'Completed: "The Witness"',  date: 'May 11, 2025 · 8:47 PM' },
+    { kind: 'collected',   text: 'Collected "Blue Pendant"',   date: 'May 11, 2025 · 6:03 PM' },
+    { kind: 'episode',     text: 'Reached Episode 4',          date: 'May 10, 2025 · 9:47 PM' },
+    { kind: 'screenshot',  text: 'Screenshot saved',           date: 'May 10, 2025 · 9:12 PM' },
+  ],
+
+  // Quick actions (callbacks wired in renderer.js)
+  quickActions: [
+    { id: 'check-updates',   label: 'Check for Updates',  icon: 'refresh' },
+    { id: 'verify-files',    label: 'Verify Game Files',  icon: 'shield' },
+    { id: 'open-save-dir',   label: 'Open Save Folder',   icon: 'folder' },
+    { id: 'open-settings',   label: 'Game Settings',      icon: 'cog' },
+    { id: 'explore-mods',    label: 'Explore Mods',       icon: 'puzzle' },
+  ],
+
+  // Update / localization progress (replaced with real data once update check runs)
+  update: {
+    available:    false,
+    version:      'v1.0.0',
+    releasedDate: '',
+    downloading:  false,
+    pct:          0,
+    speed:        '',
+    timeLeft:     '',
+    sizeText:     '',
+  },
+};

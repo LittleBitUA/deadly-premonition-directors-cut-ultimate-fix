@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
+  <title>Deadly Premonition — Fan Launcher</title>
+  <link rel="icon" type="image/x-icon" href="../assets/DP_LOGO.ico">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ════════════════════════════════════════════════════════════
+       BACKGROUND  (atmospheric Greenvale layer)
+  ════════════════════════════════════════════════════════════ -->
+  <div class="app-bg" aria-hidden="true">
+    <div class="app-bg-image"></div>
+    <div class="app-bg-rain"></div>
+    <div class="app-bg-gradient"></div>
+    <div class="app-bg-vignette"></div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════
+       TOP NAVIGATION  (TopNavigation component)
+  ════════════════════════════════════════════════════════════ -->
+  <header class="topnav" id="titlebar">
+    <div class="topnav-drag">
+
+      <div class="topnav-left">
+        <div class="topnav-logo" title="Little Bit">
+          <svg viewBox="0 0 32 32" fill="none" stroke="currentColor"
+               stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M16 4 L11 12 L13.2 12 L9 18 L11.5 18 L7 24 L25 24 L20.5 18 L23 18 L18.8 12 L21 12 Z"/>
+            <rect x="14.7" y="24" width="2.6" height="3.5" fill="currentColor" stroke="none"/>
+            <path d="M16 4 L14 9 M16 4 L18 9 M16 14 L13.5 17 M16 14 L18.5 17" opacity=".55"/>
+          </svg>
+        </div>
+
+        <nav class="topnav-menu">
+          <button class="topnav-link active" data-view="home">
+            <span data-i18n="nav.home">HOME</span><span class="topnav-underline"></span>
+          </button>
+          <button class="topnav-link" data-view="settings">
+            <span data-i18n="nav.settings">SETTINGS</span><span class="topnav-underline"></span>
+          </button>
+        </nav>
+      </div>
+
+      <div class="topnav-right">
+        <button class="topnav-pill" id="btn-notifications" title="Notifications">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M6 8a6 6 0 0 1 12 0c0 6 3 8 3 8H3s3-2 3-8"/>
+            <path d="M10 21a2 2 0 0 0 4 0"/>
+          </svg>
+          <span class="topnav-pill-badge" id="notif-badge" style="display:none">0</span>
+        </button>
+
+        <button class="topnav-pill topnav-pill-wide" id="btn-downloads" title="Downloads">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/>
+          </svg>
+          <div class="topnav-pill-stack">
+            <span class="topnav-pill-title">Downloads</span>
+            <span class="topnav-pill-meta" id="downloads-meta">0 Updates</span>
+          </div>
+        </button>
+
+        <!-- Notifications dropdown -->
+        <div class="topnav-dropdown hidden" id="notif-dropdown">
+          <header class="dropdown-head">
+            <span>NOTIFICATIONS</span>
+            <button class="dropdown-clear" id="btn-notif-clear" title="Clear">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6M5 6l1 14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-14"/>
+              </svg>
+            </button>
+          </header>
+          <ul class="dropdown-list" id="notif-list">
+            <li class="dropdown-empty">No new notifications.</li>
+          </ul>
+        </div>
+
+        <!-- Downloads dropdown -->
+        <div class="topnav-dropdown hidden" id="downloads-dropdown">
+          <header class="dropdown-head">
+            <span>DOWNLOADS</span>
+          </header>
+          <ul class="dropdown-list" id="downloads-list">
+            <li class="dropdown-empty">No active downloads.</li>
+          </ul>
+        </div>
+
+        <div class="topnav-window">
+          <button class="winbtn" id="btn-minimize" title="Minimize">
+            <svg viewBox="0 0 10 10"><line x1="2" y1="5" x2="8" y2="5" stroke="currentColor"/></svg>
+          </button>
+          <button class="winbtn" id="btn-maximize" title="Maximize">
+            <svg viewBox="0 0 10 10"><rect x="2" y="2" width="6" height="6" fill="none" stroke="currentColor"/></svg>
+          </button>
+          <button class="winbtn close" id="btn-close" title="Close">
+            <svg viewBox="0 0 10 10">
+              <line x1="2.5" y1="2.5" x2="7.5" y2="7.5" stroke="currentColor"/>
+              <line x1="7.5" y1="2.5" x2="2.5" y2="7.5" stroke="currentColor"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ════════════════════════════════════════════════════════════
+       MAIN CONTENT GRID  (LauncherHome view)
+  ════════════════════════════════════════════════════════════ -->
+  <main class="home" id="view-home">
+
+    <!-- ─────────── GameTipsCard (rotating troubleshooting tips) ─────────── -->
+    <section class="quote-card" id="quote-card">
+      <div class="quote-head">
+        <span class="quote-marker">”</span>
+        <svg class="quote-tip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 2a7 7 0 0 0-4 12.7V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.3A7 7 0 0 0 12 2z"/>
+          <path d="M9 22h6"/>
+        </svg>
+      </div>
+      <div class="quote-label">GAME TIPS</div>
+      <div class="quote-text" id="quote-text"></div>
+      <div class="quote-author" id="quote-author"></div>
+      <div class="quote-dots" id="quote-dots"></div>
+    </section>
+
+    <!-- ─────────── HeroSection (centered title + LAUNCH) ─────────── -->
+    <section class="hero">
+      <h1 class="hero-title">
+        <span class="hero-title-line">DEADLY</span>
+        <span class="hero-title-line">PREMONITION</span>
+      </h1>
+      <p class="hero-subtitle">B E S T&nbsp;&nbsp;G A M E&nbsp;&nbsp;O F&nbsp;&nbsp;A L L&nbsp;&nbsp;T I M E</p>
+
+      <div class="hero-launch-row">
+        <button class="btn-launch" id="btn-launch">
+          <span class="btn-launch-glow"></span>
+          <span class="btn-launch-icon">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M7 5v14l12-7z"/>
+            </svg>
+          </span>
+          <span class="btn-launch-label">LAUNCH</span>
+        </button>
+      </div>
+
+      <div class="hero-status">
+        <span class="hero-status-dot" id="status-dot"></span>
+        <span class="hero-status-text" id="status-text">Game Ready</span>
+        <span class="hero-status-sep">·</span>
+        <span class="hero-version" id="hero-version">v1.0.3</span>
+      </div>
+    </section>
+
+
+    <!-- ─────────── SettingsPanel (right column, open) ─────────── -->
+    <aside class="settings-panel" id="settings-panel">
+      <header class="settings-head">
+        <div class="settings-head-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          <span>SETTINGS</span>
+        </div>
+      </header>
+
+      <div class="settings-body">
+        <nav class="settings-nav" id="settings-nav">
+          <button class="settings-nav-btn active" data-section="general">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M12 1v6m0 10v6m11-11h-6M7 12H1"/>
+            </svg>
+            <span>General</span>
+          </button>
+          <button class="settings-nav-btn" data-section="graphics">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="5" width="18" height="13" rx="2"/>
+              <path d="M3 18l5-5 4 4 5-5 4 4"/>
+            </svg>
+            <span>Graphics</span>
+          </button>
+          <button class="settings-nav-btn" data-section="accessibility">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="4" r="2"/>
+              <path d="M5 9l7-1 7 1M9 21l3-9 3 9M10 13h4"/>
+            </svg>
+            <span>Accessibility</span>
+          </button>
+          <button class="settings-nav-btn" data-section="advanced">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+              <path d="M17 21v-8H7v8M7 3v5h8"/>
+            </svg>
+            <span>Saves</span>
+          </button>
+          <button class="settings-nav-btn" data-section="log">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 8v4l3 2"/>
+              <circle cx="12" cy="12" r="9"/>
+            </svg>
+            <span>Log</span>
+          </button>
+          <button class="settings-nav-btn" data-section="about">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9"/>
+              <path d="M12 8h0M12 12v4"/>
+            </svg>
+            <span>About</span>
+          </button>
+        </nav>
+
+        <div class="settings-content" id="settings-content">
+
+          <!-- GENERAL -->
+          <section class="settings-section active" data-section="general">
+            <div class="form-row">
+              <span class="form-label">
+                Launcher Language
+                <em class="form-hint">мова інтерфейсу лаунчера</em>
+              </span>
+              <select id="form-language" class="form-select">
+                <option value="uk">Українська</option>
+                <option value="en">English</option>
+              </select>
+            </div>
+            <h4 class="form-subhead">Launch Options</h4>
+            <label class="form-check">
+              <input type="checkbox" id="opt-steam-overlay">
+              <span class="form-check-box"></span>
+              <span>Enable Steam Overlay</span>
+            </label>
+            <label class="form-check">
+              <input type="checkbox" id="opt-run-as-admin">
+              <span class="form-check-box"></span>
+              <span>Run as Administrator</span>
+            </label>
+          </section>
+
+          <!-- GRAPHICS -->
+          <section class="settings-section" data-section="graphics">
+            <div class="form-2col">
+            <div class="form-row">
+              <span class="form-label">Anti-Aliasing</span>
+              <select id="aa-quality" class="form-select">
+                <option value="0">Off</option>
+                <option value="1">Low</option>
+                <option value="2" selected>Medium</option>
+                <option value="3">High</option>
+                <option value="4">Ultra</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">AA Type</span>
+              <select id="aa-type" class="form-select">
+                <option value="SMAA" selected>SMAA</option>
+                <option value="FXAA">FXAA</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Filtering Override</span>
+              <select id="filtering" class="form-select">
+                <option value="0" selected>Off</option>
+                <option value="1">Bilinear</option>
+                <option value="2">Aniso 16×</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Shadow Resolution</span>
+              <select id="shadow-scale" class="form-select">
+                <option value="1" selected>1×</option>
+                <option value="2">4×</option>
+                <option value="4">8×</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Improved Shadows</span>
+              <label class="form-toggle">
+                <input type="checkbox" id="shadow-precision">
+                <span class="form-toggle-track"><span class="form-toggle-thumb"></span></span>
+              </label>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Reflection Resolution</span>
+              <select id="reflect-scale" class="form-select">
+                <option value="1" selected>1×</option>
+                <option value="2">4×</option>
+                <option value="4">8×</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Improved DoF</span>
+              <label class="form-toggle">
+                <input type="checkbox" id="improve-dof">
+                <span class="form-toggle-track"><span class="form-toggle-thumb"></span></span>
+              </label>
+            </div>
+            <div class="form-row">
+              <span class="form-label">DoF Blur</span>
+              <select id="dof-blur" class="form-select">
+                <option value="0" selected>Off</option>
+                <option value="1">1080p</option>
+                <option value="2">4K</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">SSAO</span>
+              <select id="ssao-strength" class="form-select">
+                <option value="0" selected>Off</option>
+                <option value="1">Low</option>
+                <option value="2">Medium</option>
+                <option value="3">High</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">SSAO Quality</span>
+              <select id="ssao-scale" class="form-select">
+                <option value="1" selected>High</option>
+                <option value="2">Low</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">SSAO Type</span>
+              <select id="ssao-type" class="form-select">
+                <option value="VSSAO" selected>VSSAO</option>
+                <option value="VSSAO2">VSSAO2</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Texture Dump</span>
+              <label class="form-toggle">
+                <input type="checkbox" id="tex-dump">
+                <span class="form-toggle-track"><span class="form-toggle-thumb"></span></span>
+              </label>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Texture Override</span>
+              <label class="form-toggle">
+                <input type="checkbox" id="tex-override">
+                <span class="form-toggle-track"><span class="form-toggle-thumb"></span></span>
+              </label>
+            </div>
+
+            <h4 class="form-subhead">Display</h4>
+            <div class="form-row">
+              <span class="form-label">Resolution</span>
+              <select id="res-preset" class="form-select">
+                <option value="1280×720">1280 × 720</option>
+                <option value="1366×768">1366 × 768</option>
+                <option value="1600×900">1600 × 900</option>
+                <option value="1920×1080" selected>1920 × 1080</option>
+                <option value="2560×1440">2560 × 1440</option>
+                <option value="3840×2160">3840 × 2160</option>
+                <option value="custom">Custom…</option>
+              </select>
+            </div>
+            <div class="form-row" id="custom-res-row">
+              <span class="form-label">Width / Height</span>
+              <div class="form-control-inline">
+                <input type="number" id="res-width"  class="form-num" value="1920" disabled>
+                <input type="number" id="res-height" class="form-num" value="1080" disabled>
+              </div>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Display Mode</span>
+              <div class="form-radio-row">
+                <label class="form-radio">
+                  <input type="radio" name="disp-mode" value="fullscreen">
+                  <span class="form-radio-ring"></span>Fullscreen
+                </label>
+                <label class="form-radio">
+                  <input type="radio" name="disp-mode" value="borderless" checked>
+                  <span class="form-radio-ring"></span>Borderless
+                </label>
+                <label class="form-radio">
+                  <input type="radio" name="disp-mode" value="windowed">
+                  <span class="form-radio-ring"></span>Windowed
+                </label>
+              </div>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Refresh Rate</span>
+              <input type="number" id="fullscreen-hz" class="form-num" value="60">
+            </div>
+            </div><!-- /form-2col -->
+          </section>
+
+          <!-- ACCESSIBILITY -->
+          <section class="settings-section" data-section="accessibility">
+            <div class="compat-admin-banner" id="compat-admin-banner">
+              <span class="compat-admin-icon">⚠</span>
+              <div class="compat-admin-text">
+                <strong>Administrator Rights Required</strong>
+                <span>Writing compat mode requires registry access.</span>
+              </div>
+              <button class="btn-relaunch-admin" id="btn-relaunch-admin">Relaunch as Admin</button>
+            </div>
+
+            <h4 class="form-subhead">Windows Compatibility Mode</h4>
+            <div class="compat-target-row">
+              <span class="compat-filename">DeadlyPremonition.exe</span>
+              <span class="compat-status" id="compat-status-dp">—</span>
+            </div>
+            <div class="compat-target-row">
+              <span class="compat-filename">DPLauncher.exe</span>
+              <span class="compat-status" id="compat-status-launcher">—</span>
+            </div>
+            <div class="compat-actions">
+              <button class="btn-primary"   id="btn-compat-toggle" disabled>Apply XP SP3</button>
+              <button class="btn-secondary" id="btn-compat-win98"  disabled>Apply Win 98 / Me</button>
+            </div>
+            <p class="compat-note" id="compat-note"></p>
+
+          </section>
+
+          <!-- SAVES (formerly Advanced) -->
+          <section class="settings-section" data-section="advanced">
+            <p class="settings-help">
+              Лаунчер автоматично робить резервні копії вашого <code>dp.sav</code>
+              кожні 2 хвилини, щоб ви не втратили прогрес при вильотах.
+            </p>
+
+            <div class="form-row">
+              <span class="form-label">Auto-Save Backup</span>
+              <label class="form-toggle">
+                <input type="checkbox" id="autosave-toggle" checked>
+                <span class="form-toggle-track"><span class="form-toggle-thumb"></span></span>
+                <span class="form-toggle-label" id="autosave-label">On</span>
+              </label>
+            </div>
+            <p class="compat-note" id="autosave-note"></p>
+
+            <h4 class="form-subhead">Резервні копії</h4>
+            <div class="saves-list" id="saves-list">
+              <p class="settings-placeholder" id="saves-empty">Резервних копій поки немає.</p>
+            </div>
+          </section>
+
+          <!-- LOG  (full activity history) -->
+          <section class="settings-section" data-section="log">
+            <p class="settings-help">
+              Журнал подій лаунчера: запуски, збереження налаштувань, встановлення компонентів,
+              застосовані патчі. Зберігаються останні 200 записів.
+            </p>
+            <div class="log-actions">
+              <button class="btn-secondary" id="btn-log-clear">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6M5 6l1 14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-14"/>
+                </svg>
+                Очистити журнал
+              </button>
+            </div>
+            <ul class="activity-list activity-list-full" id="activity-list"></ul>
+          </section>
+
+          <!-- ABOUT -->
+          <section class="settings-section" data-section="about">
+            <div class="about-card">
+
+              <div class="about-hero">
+                <div class="about-logo">
+                  <svg viewBox="0 0 32 32" fill="none" stroke="currentColor"
+                       stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M16 4 L11 12 L13.2 12 L9 18 L11.5 18 L7 24 L25 24 L20.5 18 L23 18 L18.8 12 L21 12 Z"/>
+                    <rect x="14.7" y="24" width="2.6" height="3.5" fill="currentColor" stroke="none"/>
+                  </svg>
+                </div>
+                <div class="about-hero-text">
+                  <h3>Deadly Premonition · Fan Launcher</h3>
+                  <p class="about-version">v1.0.0</p>
+                </div>
+              </div>
+
+              <p class="about-intro">
+                Це <strong>фанатський лаунчер</strong>, створений з єдиною метою — зробити
+                ігровий досвід <em>Deadly Premonition: The Director's Cut</em> максимально
+                комфортним: одне натискання LAUNCH замість години ритуалу з DPfix, 4GB-патчем,
+                DXVK і танцями навколо реєстру. Усі необхідні компоненти лаунчер завантажує
+                та встановлює сам.
+              </p>
+
+              <h4 class="about-subhead">Що використовується</h4>
+              <ul class="about-credits">
+                <li>
+                  <span class="about-credit-name">DPFix v0.9.5</span>
+                  <span class="about-credit-by">Peter «Durante» Thoman</span>
+                  <span class="about-credit-desc">
+                    Графічний фіксер — кастомні роздільні здатності, anti-aliasing,
+                    тіні, SSAO, виправлення інтерфейсу.
+                  </span>
+                </li>
+                <li>
+                  <span class="about-credit-name">4GB LAA Patch</span>
+                  <span class="about-credit-by">NTCore (Daniel Pistelli)</span>
+                  <span class="about-credit-desc">
+                    Знімає обмеження 2 ГБ оперативної пам'яті для 32-бітного процесу гри.
+                  </span>
+                </li>
+                <li>
+                  <span class="about-credit-name">DXVK 2.7.1</span>
+                  <span class="about-credit-by">Philip «doitsujin» Rebohle</span>
+                  <span class="about-credit-desc">
+                    Vulkan-рендерер для Direct3D 9 — стабільність, продуктивність,
+                    сучасний рендеринг замість застарілих DirectX-викликів.
+                  </span>
+                </li>
+              </ul>
+
+              <h4 class="about-subhead">Автор лаунчера</h4>
+              <div class="about-author">
+                <p>
+                  <strong>Dmytro Bidlov</strong> — створено з любов'ю від
+                  <span class="about-ua">української 🇺🇦 спільноти фанатів</span>
+                  <em>Deadly Premonition</em>.
+                </p>
+                <p class="about-thanks">
+                  Спасибі Swery (Hidetaka Suehiro) за безсмертну, абсурдну і
+                  щемливу гру.
+                </p>
+              </div>
+
+              <p class="about-disclaimer">
+                Лаунчер не афілійований із Access Games / Rising Star Games / Toybox Inc.
+                Усі права на гру належать правовласникам. Цей проєкт — фанатська
+                ініціатива, безкоштовно і з відкритою душею.
+              </p>
+
+            </div>
+          </section>
+
+        </div>
+      </div>
+
+      <footer class="settings-foot">
+        <button class="btn-secondary" id="btn-reset">Restore Defaults</button>
+        <button class="btn-primary btn-save" id="btn-apply">Save Changes</button>
+      </footer>
+    </aside>
+
+    <!-- ─────────── DASHBOARD GRID (lower zone) ─────────── -->
+    <section class="dashboard">
+
+      <!-- UpdateCard -->
+      <article class="dash-card dash-update" id="dash-update">
+        <header class="dash-head">
+          <div class="dash-head-l">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 12a9 9 0 1 1-9-9c2.5 0 4.7 1 6.3 2.7"/>
+              <path d="M21 3v6h-6"/>
+            </svg>
+            <span>LAUNCHER UPDATE</span>
+          </div>
+        </header>
+        <div class="dash-body">
+          <div class="update-version-row">
+            <span class="update-version-num" id="dash-update-num">v1.0.0</span>
+            <span class="update-version-tag" id="dash-update-tag">Up to date</span>
+          </div>
+          <p class="update-version-date" id="dash-update-date">—</p>
+
+          <div class="update-progress-block" id="dash-update-progress" hidden>
+            <div class="update-progress-name" id="dash-update-name">—</div>
+            <div class="update-progress-row">
+              <div class="update-progress-bar"><div class="update-progress-fill" id="dash-update-fill"></div></div>
+              <span class="update-progress-pct" id="dash-update-pct">0%</span>
+            </div>
+            <p class="update-progress-stage" id="dash-update-stage">—</p>
+            <div class="update-progress-meta">
+              <span id="dash-update-size">0 / 0 MB</span>
+              <span class="sep">·</span>
+              <span id="dash-update-speed">— MB/s</span>
+              <span class="sep">·</span>
+              <span id="dash-update-time">—</span>
+            </div>
+            <button class="btn-secondary update-progress-pause" id="dash-update-pause" disabled>Pause</button>
+          </div>
+
+          <p class="settings-placeholder" id="dash-update-empty">Лаунчер актуальний.</p>
+        </div>
+      </article>
+
+      <!-- NewsCard -->
+      <article class="dash-card dash-news">
+        <header class="dash-head">
+          <div class="dash-head-l">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="5" width="18" height="14" rx="2"/>
+              <path d="M3 9h18M7 13h6M7 16h4"/>
+            </svg>
+            <span>LATEST NEWS</span>
+          </div>
+          <button class="dash-head-link" data-action="view-news">View All</button>
+        </header>
+        <div class="dash-body news-list" id="news-list"></div>
+      </article>
+
+      <!-- SavesCard (real backups from savedata/backups) -->
+      <article class="dash-card dash-saves" id="dash-saves">
+        <header class="dash-head">
+          <div class="dash-head-l">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+              <path d="M17 21v-8H7v8M7 3v5h8"/>
+            </svg>
+            <span>SAVE BACKUPS</span>
+          </div>
+          <span class="dash-head-r" id="saves-count">—</span>
+        </header>
+        <div class="dash-body">
+          <div class="saves-backup-list" id="saves-backup-list">
+            <p class="settings-placeholder" id="saves-backup-empty">
+              Резервних копій поки немає.
+            </p>
+          </div>
+        </div>
+      </article>
+
+    </section>
+
+  </main>
+
+  <!-- ════════════════════════════════════════════════════════════
+       FOOTER STATUS BAR  (FooterStatusBar component)
+  ════════════════════════════════════════════════════════════ -->
+  <footer class="footer-bar">
+    <div class="footer-left"></div>
+    <div class="footer-center">
+      <a class="footer-social" data-link="https://t.me/LittleBitUA" title="Telegram">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M21.94 4.31a1 1 0 0 0-1.37-1.05L2.62 10.34a1 1 0 0 0 .06 1.86l4.27 1.32 1.62 5.14a1 1 0 0 0 1.74.37l2.18-2.62 4.13 3.04a1 1 0 0 0 1.58-.65zM9.4 14.4l-.5 4.04 3.5-3.5z"/>
+        </svg>
+      </a>
+      <a class="footer-social" data-link="https://x.com/LittleBitUA" title="X (Twitter)">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M17.5 3h3.4l-7.5 8.6L22 21h-6.8l-5.3-7-6 7H.5L8.5 12 .3 3h7l4.8 6.4L17.5 3zm-1.2 16h1.9L7.8 5H5.8L16.3 19z"/>
+        </svg>
+      </a>
+      <a class="footer-social" data-link="https://www.youtube.com/@UA_LittleBit" title="YouTube">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M23.5 7.1a3 3 0 0 0-2.1-2.1C19.5 4.5 12 4.5 12 4.5s-7.5 0-9.4.5A3 3 0 0 0 .5 7.1C0 9 0 12 0 12s0 3 .5 4.9a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1C24 15 24 12 24 12s0-3-.5-4.9zM9.5 15.5v-7l6.3 3.5-6.3 3.5z"/>
+        </svg>
+      </a>
+      <a class="footer-social" data-link="https://steamcommunity.com/id/bidlochuk/" title="Steam">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 2C6.6 2 2.2 6.1 2 11.3l5.3 2.2a3 3 0 0 1 1.7-.5h.2l2.4-3.4v-.1a4 4 0 1 1 4 4h-.1l-3.4 2.4v.2a3 3 0 0 1-5.7 1.3l-3.8-1.6C3.9 19.5 7.6 22 12 22c5.5 0 10-4.5 10-10S17.5 2 12 2zm-3.7 15.2-1.2-.5c.2.5.6.9 1.1 1.1 1 .4 2.2 0 2.6-1.1.2-.5.2-1.1 0-1.6s-.6-.9-1.1-1.1c-.5-.2-1-.2-1.5 0l1.3.5c.8.3 1.2 1.2.9 2-.3.7-1.3 1.1-2.1.7zm10.4-6.5c0-1.5-1.2-2.7-2.7-2.7s-2.7 1.2-2.7 2.7 1.2 2.7 2.7 2.7c1.5 0 2.7-1.2 2.7-2.7zm-4.7 0c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2z"/>
+        </svg>
+      </a>
+      <span class="footer-divider"></span>
+      <span class="footer-official">Author Links</span>
+    </div>
+    <div class="footer-right"></div>
+  </footer>
+
+  <!-- ════════════════════════════════════════════════════════════
+       FIRST-RUN SETUP MODAL  (shown when gamePath not configured)
+  ════════════════════════════════════════════════════════════ -->
+  <div class="firstrun-overlay hidden" id="firstrun-overlay" data-step="1">
+    <div class="firstrun-card">
+      <div class="firstrun-aura"></div>
+
+      <header class="firstrun-head">
+        <div class="firstrun-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3l2.5 5.5L20 11l-5.5 2.5L12 19l-2.5-5.5L4 11l5.5-2.5L12 3z"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="firstrun-title">Раді Вас бачити!</h2>
+          <p class="firstrun-sub">Налаштуємо вашу гру за хвилину</p>
+        </div>
+      </header>
+
+      <!-- Step indicator -->
+      <div class="firstrun-stepper">
+        <div class="step-bubble active" data-step="1"><span>1</span><label>Завантаження</label></div>
+        <div class="step-link"></div>
+        <div class="step-bubble" data-step="2"><span>2</span><label>Налаштування</label></div>
+        <div class="step-link"></div>
+        <div class="step-bubble" data-step="3"><span>3</span><label>Готово</label></div>
+      </div>
+
+      <!-- Step 1 — path + downloads -->
+      <div class="firstrun-step-body" data-step-body="1">
+
+      <p class="firstrun-intro">
+        Перш ніж розпочати, вкажіть папку з <code>DeadlyPremonition.exe</code>
+        і завантажимо все необхідне для гри.
+      </p>
+
+      <section class="firstrun-step">
+        <div class="firstrun-step-head">
+          <span class="firstrun-step-num">1</span>
+          <span>Папка гри</span>
+        </div>
+        <!-- Auto-detect banner (shown if game found in Steam libraries) -->
+        <div class="firstrun-detect hidden" id="firstrun-detect">
+          <div class="firstrun-detect-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M9 12l2 2 4-4"/>
+              <circle cx="12" cy="12" r="9"/>
+            </svg>
+          </div>
+          <div class="firstrun-detect-info">
+            <div class="firstrun-detect-title">Знайдено гру у Steam</div>
+            <div class="firstrun-detect-path" id="firstrun-detect-path">—</div>
+          </div>
+          <button class="btn-primary firstrun-detect-use" id="btn-firstrun-use-detected">
+            Використати
+          </button>
+        </div>
+
+        <div class="firstrun-dir">
+          <div class="firstrun-dir-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            </svg>
+          </div>
+          <div class="firstrun-dir-info">
+            <div class="firstrun-dir-path" id="firstrun-dir-path">— ще не вибрано —</div>
+            <div class="firstrun-dir-hint" id="firstrun-dir-hint">
+              Очікується <code>DP.exe</code> або <code>DeadlyPremonition.exe</code>
+            </div>
+          </div>
+          <button class="btn-secondary" id="btn-firstrun-pick">Огляд</button>
+        </div>
+      </section>
+
+      <section class="firstrun-step">
+        <div class="firstrun-step-head">
+          <span class="firstrun-step-num">2</span>
+          <span>Компоненти для встановлення</span>
+        </div>
+        <div class="firstrun-comps">
+          <div class="firstrun-comp" id="frc-dpfix">
+            <div class="firstrun-comp-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M13 3l2.5 6.5L22 12l-6.5 2.5L13 21l-2.5-6.5L4 12l6.5-2.5L13 3z"/>
+              </svg>
+            </div>
+            <div class="firstrun-comp-info">
+              <div class="firstrun-comp-name">DPFix v0.9.5 <span class="firstrun-comp-author">· Durante</span></div>
+              <div class="firstrun-comp-status">Очікує</div>
+              <div class="firstrun-comp-bar"><div class="firstrun-comp-fill"></div></div>
+            </div>
+          </div>
+          <div class="firstrun-comp" id="frc-4gb">
+            <div class="firstrun-comp-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="4" y="6" width="16" height="12" rx="2"/>
+                <path d="M8 10v4M12 10v4M16 10v4"/>
+              </svg>
+            </div>
+            <div class="firstrun-comp-info">
+              <div class="firstrun-comp-name">4GB LAA Patch <span class="firstrun-comp-author">· NTCore</span></div>
+              <div class="firstrun-comp-status">Очікує</div>
+              <div class="firstrun-comp-bar"><div class="firstrun-comp-fill"></div></div>
+            </div>
+          </div>
+          <div class="firstrun-comp" id="frc-dxvk">
+            <div class="firstrun-comp-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/>
+              </svg>
+            </div>
+            <div class="firstrun-comp-info">
+              <div class="firstrun-comp-name">DXVK v2.7.1 <span class="firstrun-comp-author">· doitsujin</span></div>
+              <div class="firstrun-comp-status">Очікує</div>
+              <div class="firstrun-comp-bar"><div class="firstrun-comp-fill"></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="firstrun-actions">
+        <button class="btn-primary"   id="btn-firstrun-install" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 4v12m0 0l-5-5m5 5l5-5M5 20h14"/>
+          </svg>
+          <span>Завантажити та встановити</span>
+        </button>
+      </footer>
+      </div><!-- /step-body=1 -->
+
+      <!-- Step 2 — optional patches -->
+      <div class="firstrun-step-body" data-step-body="2">
+        <p class="firstrun-intro">
+          Тепер можна застосувати додаткові патчі. Це необов'язково, але рекомендовано
+          для стабільної роботи гри.
+        </p>
+
+        <div class="firstrun-comps">
+
+          <!-- 4GB Patch card -->
+          <div class="firstrun-patch" id="patch-4gb">
+            <div class="firstrun-comp-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="4" y="6" width="16" height="12" rx="2"/>
+                <path d="M8 10v4M12 10v4M16 10v4"/>
+              </svg>
+            </div>
+            <div class="firstrun-comp-info">
+              <div class="firstrun-comp-name">Застосувати 4GB Patch</div>
+              <div class="firstrun-patch-desc">
+                Знімає обмеження 2 ГБ оперативної пам'яті для <code>DP.exe</code>.
+                Без цього гра може вилітати на сучасних системах.
+              </div>
+              <div class="firstrun-patch-status" id="patch-4gb-status">—</div>
+            </div>
+            <button class="btn-primary firstrun-patch-btn" id="btn-apply-4gb">Так</button>
+          </div>
+
+          <!-- DXVK card -->
+          <div class="firstrun-patch" id="patch-dxvk">
+            <div class="firstrun-comp-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/>
+              </svg>
+            </div>
+            <div class="firstrun-comp-info">
+              <div class="firstrun-comp-name">Застосувати DXVK</div>
+              <div class="firstrun-patch-desc">
+                Vulkan-рендерер для Direct3D 9 — підвищує стабільність та FPS.
+                Копіює <code>d9vk.dll</code> до SysWOW64 і патчить
+                <code>d3d9.dll</code> у грі. Потрібні права адміністратора.
+              </div>
+              <div class="firstrun-patch-status" id="patch-dxvk-status">—</div>
+            </div>
+            <button class="btn-primary firstrun-patch-btn" id="btn-apply-dxvk">Так</button>
+          </div>
+
+        </div>
+
+        <footer class="firstrun-actions firstrun-actions-step2">
+          <button class="btn-secondary" id="btn-firstrun-back">Назад</button>
+          <button class="btn-primary"   id="btn-firstrun-next-3">Далі</button>
+        </footer>
+      </div><!-- /step-body=2 -->
+
+      <!-- Step 3 — done -->
+      <div class="firstrun-step-body" data-step-body="3">
+        <div class="firstrun-done">
+          <div class="firstrun-done-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M9 12l2 2 4-4"/>
+              <circle cx="12" cy="12" r="9"/>
+            </svg>
+          </div>
+          <h3 class="firstrun-done-title">Все готово!</h3>
+          <p class="firstrun-done-text">
+            Ваш Deadly Premonition налаштований і готовий до запуску.<br>
+            Натисніть кнопку нижче, щоб перейти до лаунчера.
+          </p>
+          <button class="btn-primary firstrun-done-btn" id="btn-firstrun-finish">
+            Перейти до лаунчера
+          </button>
+        </div>
+      </div><!-- /step-body=3 -->
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════
+       NEWS MODAL  (full list of latest news)
+  ════════════════════════════════════════════════════════════ -->
+  <div class="news-overlay hidden" id="news-overlay">
+    <div class="news-modal">
+      <header class="news-modal-head">
+        <div class="news-modal-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="14" rx="2"/>
+            <path d="M3 9h18M7 13h6M7 16h4"/>
+          </svg>
+          <span>LATEST NEWS</span>
+        </div>
+        <button class="news-modal-close" id="btn-news-close" title="Close">
+          <svg viewBox="0 0 18 18">
+            <line x1="4" y1="4" x2="14" y2="14" stroke="currentColor" stroke-width="1.4"/>
+            <line x1="14" y1="4" x2="4" y2="14" stroke="currentColor" stroke-width="1.4"/>
+          </svg>
+        </button>
+      </header>
+      <div class="news-modal-body" id="news-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════
+       CONFIRM MODAL  (generic: restore save, dangerous actions)
+  ════════════════════════════════════════════════════════════ -->
+  <div class="confirm-overlay hidden" id="confirm-overlay">
+    <div class="confirm-card">
+      <div class="confirm-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 9v4M12 17h0"/>
+          <path d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        </svg>
+      </div>
+      <h3 class="confirm-title" id="confirm-title">Підтвердити дію?</h3>
+      <p class="confirm-text"  id="confirm-text">—</p>
+      <div class="confirm-actions">
+        <button class="btn-secondary" id="btn-confirm-cancel">Скасувати</button>
+        <button class="btn-primary"   id="btn-confirm-ok">Підтвердити</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════
+       UPDATE MODAL  (GitHub release available)
+  ════════════════════════════════════════════════════════════ -->
+  <div class="update-overlay hidden" id="update-overlay">
+    <div class="update-card">
+      <div class="update-badge">Update available</div>
+      <h2 class="update-title">A new version is out</h2>
+      <p class="update-version" id="update-version">—</p>
+      <p class="update-release-name" id="update-release-name"></p>
+      <div class="update-changes-hdr">What's new</div>
+      <div class="update-body" id="update-body"></div>
+      <div class="update-actions">
+        <button class="btn-secondary"  id="btn-update-skip">Skip</button>
+        <button class="btn-secondary"  id="btn-update-later">Later</button>
+        <button class="btn-primary"    id="btn-update-download">Download</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden legacy element so existing renderer.js IPC wiring keeps working -->
+  <button class="hidden" id="btn-lang"></button>
+  <button class="hidden" id="btn-launch-hero"></button>
+  <button class="hidden" id="btn-browse-ini-legacy"></button>
+
+</div><!-- /app -->
+
+<!-- Toast container -->
+<div class="toast-stack" id="toast-stack"></div>
+
+<script src="mock-data.js"></script>
+<script src="config.js"></script>
+<script src="i18n.js"></script>
+<script src="renderer.js"></script>
+</body>
+</html>

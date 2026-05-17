@@ -1,0 +1,13 @@
+node_modules/
+dist/
+dist2/
+*.bak
+*.tmp
+DPfix.ini
+.claude/
+
+# Binary tools go into releases only, not source control
+4gb_patch.exe
+d9vk.dll
+assets/4gb_patch.exe
+assets/d9vk.dll

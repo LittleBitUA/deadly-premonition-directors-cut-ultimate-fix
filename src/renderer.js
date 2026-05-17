@@ -1,0 +1,1650 @@
+'use strict';
+/**
+ * renderer.js — Renderer logic for the redesigned launcher.
+ *
+ * Component-oriented organisation (each `setup*()` function wires one chunk):
+ *
+ *   TopNavigation       — top bar + window controls
+ *   HeroSection         — LAUNCH button → steam://run/247660
+ *   QuoteCard           — rotating Agent York quotes
+ *   QuickActions        — left-column action shortcuts
+ *   SettingsPanel       — right panel with sub-nav (General/Graphics/Audio/Controls/Interface/Accessibility/Advanced/About)
+ *   EpisodesCarousel    — bottom-left dashboard card (mock data)
+ *   UpdateCard          — live update/localization progress
+ *   NewsCard            — mock news feed
+ *   ProfileCard         — mock saves/profile
+ *   RecentActivityCard  — mock activity log
+ *   FooterStatusBar     — bottom bar with profile + socials
+ *
+ * Real game functionality (INI editing, DXVK, 4GB patch, redist, autosave,
+ * compat mode, update check) is preserved from the previous launcher and
+ * wired into the new Settings panel sections.
+ */
+
+const STEAM_APPID = '247660'; // Deadly Premonition: The Director's Cut
+
+// ─────────────────────────────────────────────
+// Shared state
+// ─────────────────────────────────────────────
+const state = {
+  iniPath:     null,
+  iniLines:    [],
+  iniValues:   {},
+  gamePath:    '',
+  isLaunching: false,
+  isLoading:   false,
+  isAdmin:     false,
+};
+
+// ─────────────────────────────────────────────
+// DOM helpers
+// ─────────────────────────────────────────────
+const $  = (id)  => document.getElementById(id);
+const $$ = (sel) => document.querySelectorAll(sel);
+
+// ─────────────────────────────────────────────
+// Entry point
+// ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  document.body.dataset.view = 'home';
+
+  await initI18n();
+  await initLanguage();
+
+  setupTopNavigation();
+  setupHeroSection();
+  setupQuoteCard();
+  setupSettingsPanel();
+  setupSettingsNav();
+  setupINIControls();
+  setupCompatBlock();
+  setup4GBBlock();
+  setupRedistBlock();
+  setupAutosaveBlock();
+  setupSettingsFooter();
+
+  setupTopNavViews();
+  setupTopBarDropdowns();
+  refreshNotifBadge();      // reset HTML-stub badge (0 → hidden)
+  refreshDownloadsMeta();   // reset HTML-stub "1 Updates" → "0 Updates"
+  setupCustomSelects();     // replace native <select> popups with styled ones
+  setupFirstRunModal();
+  setupAudioInterfaceControls();
+
+  renderEpisodes();
+  renderNews();
+  renderProfile();
+  renderActivity();
+  setupFooterStatusBar();
+
+  await loadPersistedSettings();
+  await loadAppVersion();
+  await autoFindIni();
+  await restoreAutosaveState();
+  await maybeShowFirstRun();
+
+  checkForUpdates();
+
+  logActivity('info', 'Launcher started');
+});
+
+// ═════════════════════════════════════════════
+// LANGUAGE
+// ═════════════════════════════════════════════
+async function initLanguage() {
+  try {
+    const saved = await window.electronAPI.settingsRead();
+    if (saved.language === 'uk' || saved.language === 'en') {
+      applyLang(saved.language);
+      syncLangSelect();
+      return;
+    }
+  } catch { /* first run */ }
+
+  try {
+    const locale = await window.electronAPI.getLocale();
+    applyLang(locale && locale.startsWith('uk') ? 'uk' : 'en');
+  } catch {
+    applyLang('uk');
+  }
+  syncLangSelect();
+}
+
+function syncLangSelect() {
+  const sel = $('form-language');
+  if (sel) sel.value = getCurrentLang();
+}
+
+// ═════════════════════════════════════════════
+// 1) TopNavigation
+// ═════════════════════════════════════════════
+function setupTopNavigation() {
+  $('btn-minimize')?.addEventListener('click', () => window.electronAPI.minimizeWindow());
+  $('btn-maximize')?.addEventListener('click', () => window.electronAPI.maximizeWindow?.());
+  $('btn-close')?.addEventListener('click',    () => window.electronAPI.closeWindow());
+
+  // Top-nav tabs (only HOME is functional in this build)
+  $$('.topnav-link').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.disabled) return;
+      $$('.topnav-link').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  // Notifications + downloads — placeholder, just opens settings update info
+  $('btn-notifications')?.addEventListener('click', () => {
+    showToast(t('toast.noNewNotifications'), 'info');
+  });
+  $('btn-downloads')?.addEventListener('click', () => {
+    if (window.__pendingUpdate) showUpdateModal(window.__pendingUpdate);
+    else showToast(t('toast.noDownloads'), 'info');
+  });
+}
+
+// ═════════════════════════════════════════════
+// 2) HeroSection — big red LAUNCH
+// ═════════════════════════════════════════════
+function setupHeroSection() {
+  $('btn-launch')?.addEventListener('click', launchGame);
+
+  $('btn-open-settings')?.addEventListener('click', () => {
+    activateSettingsSection('general');
+  });
+
+  $('btn-browse-ini')?.addEventListener('click', () => {
+    activateSettingsSection('graphics');
+  });
+}
+
+async function launchGame() {
+  if (state.isLaunching) return;
+  state.isLaunching = true;
+
+  const btn = $('btn-launch');
+  btn?.classList.add('launching');
+  const label = btn?.querySelector('.btn-launch-label');
+  const prev  = label?.textContent;
+  if (label) label.textContent = 'LAUNCHING…';
+
+  try {
+    const res = await window.electronAPI.launchSteam(STEAM_APPID);
+    if (res?.success) {
+      showToast(t('toast.gameLaunched'), 'success');
+      logActivity('episode', 'Game launched via Steam');
+      setTimeout(() => window.electronAPI.quitApp(), 1500);
+    } else {
+      showToast(t('toast.launchError') + (res?.error || ''), 'error');
+    }
+  } catch (err) {
+    showToast(t('toast.launchError') + err.message, 'error');
+  } finally {
+    state.isLaunching = false;
+    btn?.classList.remove('launching');
+    if (label && prev) label.textContent = prev;
+  }
+}
+
+// ═════════════════════════════════════════════
+// 3) QuoteCard — rotating Agent York quotes
+// ═════════════════════════════════════════════
+function setupQuoteCard() {
+  const quotes = (window.MOCK_DATA?.quotes) || [];
+  if (!quotes.length) return;
+
+  const dotsEl = $('quote-dots');
+  if (dotsEl) {
+    dotsEl.innerHTML = quotes.map(() => '<span class="dot"></span>').join('');
+  }
+
+  let idx = quotes.findIndex(q => q.lines[0].toLowerCase().includes('dreams'));
+  if (idx < 0) idx = 0;
+  let timer = null;
+
+  const render = (i) => {
+    const q = quotes[i];
+    const text = $('quote-text');
+    const auth = $('quote-author');
+    if (text) text.innerHTML = q.lines.map(l => `<p>${escapeHtml(l)}</p>`).join('');
+    if (auth) auth.textContent = '— ' + q.author;
+    const dots = dotsEl?.children;
+    if (dots) Array.from(dots).forEach((d, di) => d.classList.toggle('active', di === i));
+  };
+  render(idx);
+
+  const tick = () => { idx = (idx + 1) % quotes.length; render(idx); };
+  timer = setInterval(tick, 8000);
+
+  Array.from(dotsEl?.children || []).forEach((d, di) => {
+    d.addEventListener('click', () => {
+      idx = di;
+      render(idx);
+      clearInterval(timer);
+      timer = setInterval(tick, 8000);
+    });
+  });
+}
+
+// ═════════════════════════════════════════════
+// 4) QuickActions
+// ═════════════════════════════════════════════
+function setupQuickActions() {
+  $$('.qa-btn').forEach(btn => {
+    btn.addEventListener('click', () => handleQuickAction(btn.dataset.action));
+  });
+}
+
+async function handleQuickAction(id) {
+  switch (id) {
+    case 'check-updates':
+      showToast(t('toast.checkingUpdates'), 'info');
+      await checkForUpdates(true);
+      break;
+    case 'verify-files':
+      showToast(t('toast.placeholder'), 'info');
+      break;
+    case 'open-save-dir':
+      showToast(t('toast.placeholder'), 'info');
+      break;
+    case 'open-settings':
+      activateSettingsSection('general');
+      break;
+    case 'explore-mods':
+      showToast(t('toast.placeholder'), 'info');
+      break;
+  }
+}
+
+// ═════════════════════════════════════════════
+// 5) SettingsPanel — open/close + sub-nav
+// ═════════════════════════════════════════════
+function setupSettingsPanel() {
+  $('btn-settings-close')?.addEventListener('click', () => {
+    $('settings-panel')?.classList.add('hidden');
+  });
+}
+
+function setupSettingsNav() {
+  $$('.settings-nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => activateSettingsSection(btn.dataset.section));
+  });
+}
+
+function activateSettingsSection(name) {
+  $('settings-panel')?.classList.remove('hidden');
+  $$('.settings-nav-btn').forEach(b => b.classList.toggle('active', b.dataset.section === name));
+  $$('.settings-section').forEach(s => s.classList.toggle('active',  s.dataset.section === name));
+
+  // Refresh dynamic state when navigating into a section that needs it
+  if (name === 'accessibility') refreshCompatStatus();
+  if (name === 'log')           renderActivity();
+}
+
+// Wire "Очистити журнал" button
+document.addEventListener('DOMContentLoaded', () => {
+  $('btn-log-clear')?.addEventListener('click', async () => {
+    try {
+      await window.electronAPI.activityClear?.();
+      renderActivity();
+      showToast('Журнал очищено ✓', 'success');
+    } catch (err) {
+      showToast('Помилка очистки: ' + err.message, 'error');
+    }
+  });
+});
+
+// ═════════════════════════════════════════════
+// 6) Language select (in Settings General)
+// ═════════════════════════════════════════════
+function setupSettingsFooter() {
+  $('form-language')?.addEventListener('change', async (e) => {
+    const lang = e.target.value;
+    applyLang(lang);
+    await persistSettings({ language: lang });
+  });
+
+  $('btn-reset')?.addEventListener('click', resetDefaults);
+  $('btn-apply')?.addEventListener('click', applyAndSave);
+}
+
+// ═════════════════════════════════════════════
+// 7) Settings — INI editing controls (Graphics + Display)
+// ═════════════════════════════════════════════
+function setupINIControls() {
+  $('res-preset')?.addEventListener('change', onResPresetChange);
+}
+
+function onResPresetChange() {
+  const val = $('res-preset').value;
+  const isCustom = val === 'custom';
+  $('res-width').disabled  = !isCustom;
+  $('res-height').disabled = !isCustom;
+  if (!isCustom) {
+    const [w, h] = val.split('×');
+    $('res-width').value  = w;
+    $('res-height').value = h;
+  }
+}
+
+// ─── auto-detect DPfix.ini in game dir ──────────
+async function autoFindIni() {
+  try {
+    const result = await window.electronAPI.findIni();
+    if (result.needsSetup) {
+      const st = $('status-text');
+      if (st) st.textContent = 'Setup Required';
+      $('status-dot')?.classList.add('error');
+      return;
+    }
+    if (result.found) {
+      await loadIni(result.path);
+    }
+  } catch (err) {
+    console.warn('findIni error', err);
+  }
+}
+
+async function loadIni(filePath) {
+  if (state.isLoading) return;
+  state.isLoading = true;
+  try {
+    const result = await window.electronAPI.loadIni(filePath);
+    state.iniPath   = filePath;
+    state.iniLines  = result.lines;
+    state.iniValues = result.values;
+    syncUIFromValues(result.values);
+    $('status-text').textContent = 'Game Ready';
+    $('status-dot')?.classList.remove('error');
+    $('status-dot')?.classList.add('ok');
+    await persistSettings({ lastIniPath: filePath });
+  } catch (err) {
+    showToast(t('toast.iniLoadError') + err.message, 'error');
+  } finally {
+    state.isLoading = false;
+  }
+}
+
+function syncUIFromValues(v) {
+  const g = (k) => v[k] ?? DEFAULTS[k] ?? '';
+
+  const pw = g('presentWidth'), ph = g('presentHeight');
+  const presetStr = `${pw}×${ph}`;
+  const presetOpts = Array.from($('res-preset').options).map(o => o.value);
+  if (presetOpts.includes(presetStr)) {
+    $('res-preset').value = presetStr;
+    $('res-width').disabled  = true;
+    $('res-height').disabled = true;
+  } else {
+    $('res-preset').value = 'custom';
+    $('res-width').disabled  = false;
+    $('res-height').disabled = false;
+  }
+  $('res-width').value  = pw;
+  $('res-height').value = ph;
+
+  const fw = g('forceWindowed'), bl = g('borderlessFullscreen');
+  if      (fw === '1') setRadio('disp-mode', 'windowed');
+  else if (bl === '1') setRadio('disp-mode', 'borderless');
+  else                  setRadio('disp-mode', 'fullscreen');
+  $('fullscreen-hz').value = g('fullscreenHz');
+
+  $('aa-quality').value = g('aaQuality');
+  $('aa-type').value    = g('aaType').trim().toUpperCase() === 'FXAA' ? 'FXAA' : 'SMAA';
+  $('filtering').value  = g('filteringOverride');
+
+  $('shadow-scale').value      = sanitizeScale(g('shadowMapScale'), [1,2,4]);
+  setToggle('shadow-precision', g('improveShadowPrecision') === '1');
+  $('reflect-scale').value     = sanitizeScale(g('reflectionScale'), [1,2,4]);
+
+  setToggle('improve-dof', g('improveDOF') === '1');
+  $('dof-blur').value = g('addDOFBlur');
+
+  $('ssao-strength').value = g('ssaoStrength');
+  $('ssao-scale').value    = g('ssaoScale');
+  $('ssao-type').value     = g('ssaoType').trim().toUpperCase() === 'VSSAO2' ? 'VSSAO2' : 'VSSAO';
+
+  setToggle('tex-dump',     g('enableTextureDumping')  === '1');
+  setToggle('tex-override', g('enableTextureOverride') === '1');
+}
+function sanitizeScale(raw, allowed) {
+  const n = parseInt(raw, 10);
+  return allowed.includes(n) ? String(n) : String(allowed[0]);
+}
+
+function collectUIValues() {
+  let w, h;
+  const preset = $('res-preset').value;
+  if (preset === 'custom') {
+    w = parseInt($('res-width').value, 10);
+    h = parseInt($('res-height').value, 10);
+  } else {
+    const [pw, ph] = preset.split('×');
+    w = parseInt(pw, 10); h = parseInt(ph, 10);
+  }
+  if (!w || !h) throw new Error(t('toast.invalidRes'));
+
+  const mode = getRadio('disp-mode');
+  return {
+    renderWidth: String(w),  renderHeight: String(h),
+    presentWidth: String(w), presentHeight: String(h),
+    forceWindowed:        mode === 'windowed'   ? '1' : '0',
+    borderlessFullscreen: mode === 'borderless' ? '1' : '0',
+    fullscreenHz:         String(parseInt($('fullscreen-hz').value, 10) || 60),
+    aaQuality:              $('aa-quality').value,
+    aaType:                 $('aa-type').value,
+    filteringOverride:      $('filtering').value,
+    shadowMapScale:         $('shadow-scale').value,
+    improveShadowPrecision: $('shadow-precision').checked ? '1' : '0',
+    reflectionScale:        $('reflect-scale').value,
+    improveDOF:             $('improve-dof').checked ? '1' : '0',
+    addDOFBlur:             $('dof-blur').value,
+    ssaoStrength:           $('ssao-strength').value,
+    ssaoScale:              $('ssao-scale').value,
+    ssaoType:               $('ssao-type').value,
+    enableTextureDumping:   $('tex-dump').checked ? '1' : '0',
+    enableTextureOverride:  $('tex-override').checked ? '1' : '0',
+    screenshotDir:          state.iniValues.screenshotDir ?? DEFAULTS.screenshotDir,
+    logLevel:               state.iniValues.logLevel      ?? DEFAULTS.logLevel,
+  };
+}
+
+async function applyAndSave() {
+  if (!state.iniPath) {
+    showToast(t('toast.selectIniFirst'), 'warn');
+    return;
+  }
+  let values;
+  try { values = collectUIValues(); }
+  catch (err) { return showToast(err.message, 'error'); }
+
+  try {
+    await window.electronAPI.saveIni({
+      filePath: state.iniPath,
+      lines:    state.iniLines,
+      values:   { ...state.iniValues, ...values },
+    });
+    const fresh = await window.electronAPI.loadIni(state.iniPath);
+    state.iniLines = fresh.lines;
+    state.iniValues = fresh.values;
+    showToast(t('toast.settingsSaved'), 'success');
+    logActivity('completed', 'DPfix.ini settings saved');
+  } catch (err) {
+    showToast(t('toast.saveError') + err.message, 'error');
+  }
+}
+
+function resetDefaults() {
+  syncUIFromValues(DEFAULTS);
+  showToast(t('toast.reset'), 'info');
+}
+
+// ─── persistence ──────────────────────────────
+async function loadPersistedSettings() {
+  try {
+    const saved = await window.electronAPI.settingsRead();
+    if (saved.gamePath) {
+      state.gamePath = saved.gamePath;
+      const gp = $('game-path');
+      if (gp) gp.value = saved.gamePath;
+    }
+  } catch { /* fresh run */ }
+
+  // Browse-exe button
+  $('btn-browse-exe')?.addEventListener('click', async () => {
+    const p = await window.electronAPI.browseExe();
+    if (!p) return;
+    state.gamePath = p;
+    $('game-path').value = p;
+    await persistSettings({ gamePath: p });
+    await autoFindIni();
+    await refreshCompatStatus();
+    onGamePathChanged();
+  });
+}
+async function persistSettings(patch) {
+  try {
+    const cur = await window.electronAPI.settingsRead();
+    await window.electronAPI.settingsWrite({ ...cur, ...patch });
+  } catch (err) { console.warn(err); }
+}
+
+// ═════════════════════════════════════════════
+// 8) COMPAT / DXVK / 4GB / Redist  blocks
+// ═════════════════════════════════════════════
+async function setupCompatBlock() {
+  state.isAdmin = await window.electronAPI.isAdmin();
+  updateAdminBanner();
+
+  $('btn-relaunch-admin')?.addEventListener('click', async () => {
+    const r = await window.electronAPI.relaunchAsAdmin();
+    if (!r?.accepted) showToast(t('toast.uacCancelled'), 'warn');
+  });
+
+  $('btn-compat-toggle')?.addEventListener('click', () => toggleCompat('xpsp3'));
+  $('btn-compat-win98')?.addEventListener('click',  () => toggleCompat('win98'));
+}
+
+function updateAdminBanner() {
+  const banner = $('compat-admin-banner');
+  if (banner) banner.style.display = state.isAdmin ? 'none' : 'flex';
+  const compat = $('btn-compat-toggle');
+  if (compat) compat.disabled = !state.isAdmin || !state.gamePath;
+  const compat98 = $('btn-compat-win98');
+  if (compat98) compat98.disabled = !state.isAdmin || !state.gamePath;
+  const fourGB = $('btn-4gb-patch');
+  if (fourGB) fourGB.disabled = !state.gamePath;
+  const redist = $('btn-install-redist');
+  if (redist) redist.disabled = !state.gamePath;
+  const hasSrc = !!$('dxvk-src-path')?.value;
+  const di = $('btn-dxvk-install');
+  if (di) di.disabled = !state.isAdmin || !hasSrc;
+  const du = $('btn-dxvk-uninstall');
+  if (du) du.disabled = !state.isAdmin;
+}
+
+async function refreshCompatStatus() {
+  if (!state.gamePath) return;
+  updateAdminBanner();
+  const gameDir = state.gamePath.replace(/[^\\\/]*$/, '');
+  const [s1, s2] = await Promise.all([
+    window.electronAPI.getCompatStatus(state.gamePath),
+    window.electronAPI.getCompatStatus(gameDir + 'DPLauncher.exe'),
+  ]);
+  setCompatStatus('compat-status-dp',       s1);
+  setCompatStatus('compat-status-launcher', s2);
+
+  // Both labels reflect the joint mode (only when BOTH exes share the same mode)
+  const joint = (s1 === s2 && s1 !== 'none') ? s1 : 'none';
+  const xpBtn   = $('btn-compat-toggle');
+  const w98Btn  = $('btn-compat-win98');
+  if (xpBtn)  xpBtn.textContent  = joint === 'xpsp3' ? 'Remove XP SP3'    : 'Apply XP SP3';
+  if (w98Btn) w98Btn.textContent = joint === 'win98' ? 'Remove Win 98/Me' : 'Apply Win 98 / Me';
+}
+function setCompatStatus(id, status) {
+  const el = $(id);
+  if (!el) return;
+  if      (status === 'xpsp3') { el.textContent = '✓ XP SP3';      el.className = 'compat-status ok'; }
+  else if (status === 'win98') { el.textContent = '✓ Win 98 / Me'; el.className = 'compat-status ok'; }
+  else                          { el.textContent = '— not set';     el.className = 'compat-status'; }
+}
+
+async function toggleCompat(mode) {
+  if (!state.isAdmin || !state.gamePath) return;
+  const xpBtn  = $('btn-compat-toggle');
+  const w98Btn = $('btn-compat-win98');
+  const btn  = mode === 'win98' ? w98Btn : xpBtn;
+  const note = $('compat-note');
+  const removing = btn.textContent.toLowerCase().includes('remove');
+
+  xpBtn  && (xpBtn.disabled  = true);
+  w98Btn && (w98Btn.disabled = true);
+  if (note) { note.textContent = '...'; note.className = 'compat-note'; }
+
+  try {
+    const gameDir   = state.gamePath.replace(/[^\\\/]*$/, '');
+    const launchExe = gameDir + 'DPLauncher.exe';
+
+    if (removing) {
+      await Promise.all([
+        window.electronAPI.removeCompat(state.gamePath),
+        window.electronAPI.removeCompat(launchExe),
+      ]);
+      if (note) { note.textContent = mode === 'win98'
+        ? '✓ Win 98 / Me знято.' : '✓ XP SP3 знято.';
+        note.className = 'compat-note ok'; }
+    } else {
+      await Promise.all([
+        window.electronAPI.setCompat(state.gamePath, mode),
+        window.electronAPI.setCompat(launchExe,      mode),
+      ]);
+      if (note) { note.textContent = mode === 'win98'
+        ? '✓ Win 98 / Me застосовано до обох файлів.'
+        : '✓ XP SP3 застосовано до обох файлів.';
+        note.className = 'compat-note ok'; }
+      logActivity('completed', `Compat → ${mode}`);
+    }
+    await refreshCompatStatus();
+  } catch (err) {
+    if (note) { note.textContent = err.message; note.className = 'compat-note error'; }
+  }
+}
+
+function onGamePathChanged() {
+  updateAdminBanner();
+}
+
+// ─── DXVK ─────────────────────────────────────
+function setupDXVKBlock() {
+  $('btn-dxvk-browse')?.addEventListener('click', async () => {
+    const p = await window.electronAPI.browseDll();
+    if (p) {
+      $('dxvk-src-path').value = p;
+      $('btn-dxvk-install').disabled = !state.isAdmin;
+    }
+  });
+  $('btn-dxvk-install')?.addEventListener('click', installDxvk);
+  $('btn-dxvk-uninstall')?.addEventListener('click', uninstallDxvk);
+  refreshDxvkStatus();
+}
+async function refreshDxvkStatus() {
+  try {
+    const ok = await window.electronAPI.checkDxvk();
+    const el = $('dxvk-status');
+    if (ok) { el.textContent = '✓ installed';  el.classList.add('ok'); $('btn-dxvk-uninstall').disabled = !state.isAdmin; }
+    else    { el.textContent = '— not installed'; el.classList.remove('ok'); }
+
+    if (!$('dxvk-src-path').value) {
+      const bundled = await window.electronAPI.getBundledDxvk();
+      if (bundled) {
+        $('dxvk-src-path').value = bundled;
+        $('btn-dxvk-install').disabled = !state.isAdmin;
+      }
+    }
+  } catch { /* ignore */ }
+}
+async function installDxvk() {
+  const src = $('dxvk-src-path').value;
+  const note = $('dxvk-note');
+  if (!src || !state.isAdmin) return;
+  $('btn-dxvk-install').disabled = true;
+  if (note) { note.textContent = 'Copying…'; note.className = 'compat-note'; }
+  try {
+    await window.electronAPI.installDxvk(src);
+    if (note) { note.textContent = '✓ d9vk.dll copied to SysWOW64.'; note.className = 'compat-note ok'; }
+    refreshDxvkStatus();
+  } catch (err) {
+    if (note) { note.textContent = err.message; note.className = 'compat-note error'; }
+    $('btn-dxvk-install').disabled = false;
+  }
+}
+async function uninstallDxvk() {
+  const note = $('dxvk-note');
+  if (!state.isAdmin) return;
+  $('btn-dxvk-uninstall').disabled = true;
+  if (note) { note.textContent = 'Removing…'; note.className = 'compat-note'; }
+  try {
+    await window.electronAPI.uninstallDxvk();
+    if (note) { note.textContent = '✓ DXVK removed.'; note.className = 'compat-note ok'; }
+    refreshDxvkStatus();
+  } catch (err) {
+    if (note) { note.textContent = err.message; note.className = 'compat-note error'; }
+    $('btn-dxvk-uninstall').disabled = false;
+  }
+}
+
+// ─── 4GB patch ────────────────────────────────
+function setup4GBBlock() {
+  $('btn-4gb-patch')?.addEventListener('click', async () => {
+    if (!state.gamePath) return;
+    const note = $('patch-note');
+    const btn  = $('btn-4gb-patch');
+    btn.disabled = true;
+    if (note) { note.textContent = 'Running patch…'; note.className = 'compat-note'; }
+    try {
+      const r = await window.electronAPI.run4gbPatch(state.gamePath);
+      if (note) {
+        if (r.success) { note.textContent = '✓ 4GB patch applied.'; note.className = 'compat-note ok'; }
+        else           { note.textContent = `Error: ${r.error || ''}`;    note.className = 'compat-note error'; }
+      }
+    } catch (err) {
+      if (note) { note.textContent = err.message; note.className = 'compat-note error'; }
+    } finally {
+      btn.disabled = false;
+    }
+  });
+}
+
+// ─── Redist ───────────────────────────────────
+function setupRedistBlock() {
+  $('btn-install-redist')?.addEventListener('click', async () => {
+    if (!state.gamePath) return;
+    const note = $('redist-note');
+    const btn  = $('btn-install-redist');
+    btn.disabled = true;
+    if (note) { note.textContent = 'Running installers…'; note.className = 'compat-note'; }
+    try {
+      const gameDir = state.gamePath.replace(/[^\\\/]*$/, '').replace(/[\\\/]$/, '');
+      const results = await window.electronAPI.installRedist(gameDir);
+      if (!results.length) {
+        if (note) { note.textContent = 'No files found in redist folder.'; note.className = 'compat-note error'; }
+      } else {
+        const failed = results.filter(r => !r.success);
+        if (note) {
+          if (failed.length) { note.textContent = 'Errors: ' + failed.map(r => r.file).join(', '); note.className = 'compat-note error'; }
+          else               { note.textContent = '✓ Installed: ' + results.map(r => r.file).join(', '); note.className = 'compat-note ok'; }
+        }
+      }
+    } catch (err) {
+      if (note) { note.textContent = err.message; note.className = 'compat-note error'; }
+    } finally {
+      btn.disabled = false;
+    }
+  });
+}
+
+// ─── Autosave ─────────────────────────────────
+function setupAutosaveBlock() {
+  $('autosave-toggle')?.addEventListener('change', async () => {
+    const enabled = $('autosave-toggle').checked;
+    const note = $('autosave-note');
+    const gameDir = state.gamePath.replace(/[^\\\/]*$/, '').replace(/[\\\/]$/, '');
+    if (enabled && gameDir) {
+      await window.electronAPI.autosaveStart(gameDir, 120000);
+      if (note) { note.textContent = 'Auto-backup enabled.'; note.className = 'compat-note ok'; }
+      await persistSettings({ autosaveEnabled: true });
+    } else {
+      await window.electronAPI.autosaveStop();
+      if (note) { note.textContent = 'Auto-backup disabled.'; note.className = 'compat-note'; }
+      await persistSettings({ autosaveEnabled: false });
+    }
+  });
+
+  window.electronAPI.onAutosaveEvent?.((msg) => {
+    const note = $('autosave-note');
+    if (!note) return;
+    if (msg.type === 'backup-created') {
+      note.textContent = `Backup created — ${msg.timestamp}`;
+      note.className   = 'compat-note ok';
+    } else if (msg.type === 'no-save') {
+      note.textContent = 'dp.sav not found.'; note.className = 'compat-note error';
+      $('autosave-toggle').checked = false;
+    } else if (msg.type === 'error') {
+      note.textContent = 'Auto-backup error: ' + msg.error;
+      note.className = 'compat-note error';
+    }
+  });
+}
+
+async function restoreAutosaveState() {
+  try {
+    const saved = await window.electronAPI.settingsRead();
+    // Default ON: enable autosave unless user explicitly disabled it
+    const enabled = saved.autosaveEnabled !== false;
+    const toggle = $('autosave-toggle');
+    if (toggle) toggle.checked = enabled;
+
+    if (enabled && state.gamePath) {
+      const gameDir = state.gamePath.replace(/[^\\\/]*$/, '').replace(/[\\\/]$/, '');
+      await window.electronAPI.autosaveStart(gameDir, 120000);
+      const note = $('autosave-note');
+      if (note) { note.textContent = 'Auto-backup активне ✓'; note.className = 'compat-note ok'; }
+      // Persist the default-on state on first run
+      if (saved.autosaveEnabled === undefined) {
+        await persistSettings({ autosaveEnabled: true });
+      }
+    }
+  } catch { /* none */ }
+}
+
+// ═════════════════════════════════════════════
+// 9) EpisodesCarousel
+// ═════════════════════════════════════════════
+function renderEpisodes() {
+  const row = $('episodes-row');
+  if (!row) return;
+  const eps = window.MOCK_DATA?.episodes || [];
+  row.innerHTML = eps.map(ep => `
+    <div class="episode" data-id="${ep.id}">
+      <span class="episode-pin"></span>
+      <div class="episode-num">${ep.code}</div>
+      <div class="episode-meta">
+        <div class="episode-kind">${escapeHtml(ep.kind)}</div>
+        <div class="episode-title">${escapeHtml(ep.title)}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ═════════════════════════════════════════════
+// 10) NewsCard
+// ═════════════════════════════════════════════
+async function renderNews() {
+  const list = $('news-list');
+  if (!list) return;
+
+  // Pick localized fields from each news item:
+  //   `title`/`excerpt` (fallback)   OR   `title_uk`/`title_en` etc.
+  const pickLocalized = (n, field) => {
+    const lang = getCurrentLang();
+    return n[`${field}_${lang}`] || n[field] || n[`${field}_en`] || n[`${field}_uk`] || '';
+  };
+
+  const renderItems = (items) => {
+    list.innerHTML = items.map(n => `
+      <div class="news-item">
+        <div class="news-thumb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+               stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h10M7 13h6"/></svg>
+        </div>
+        <div class="news-info">
+          <div class="news-title">${escapeHtml(pickLocalized(n, 'title'))}</div>
+          <div class="news-excerpt">${escapeHtml(pickLocalized(n, 'excerpt'))}</div>
+          <span class="news-date">${escapeHtml(n.date || '')}</span>
+        </div>
+      </div>`).join('');
+  };
+  renderItems(window.MOCK_DATA?.news || []);
+
+  // 2) Try GitHub feed in the background; override on success
+  try {
+    const r = await window.electronAPI.fetchNews?.();
+    if (r && Array.isArray(r.items) && r.items.length) {
+      renderItems(r.items);
+    }
+  } catch { /* silent — keep mock */ }
+}
+
+// ═════════════════════════════════════════════
+// 11) ProfileCard
+// ═════════════════════════════════════════════
+function renderProfile() {
+  const p = window.MOCK_DATA?.profile;
+  if (!p) return;
+  const initials = p.name.split(' ').map(s => s[0]).slice(0, 2).join('').toUpperCase();
+  const set = (id, val) => { const el = $(id); if (el) el.textContent = val; };
+  set('profile-initials', initials);
+  set('profile-name',     p.name);
+  set('profile-cases',    `${p.casesDone}/${p.casesAll}`);
+  set('profile-time',     p.playTime);
+  set('footer-name',      p.role || p.name);
+
+  const fa = $('footer-avatar')?.querySelector('span');
+  if (fa) fa.textContent = initials;
+}
+
+// ═════════════════════════════════════════════
+// 12) RecentActivityCard
+// ═════════════════════════════════════════════
+async function renderActivity() {
+  const list = $('activity-list');
+  if (!list) return;
+
+  let items = [];
+  try { items = (await window.electronAPI.activityRead?.()) || []; } catch {}
+  // No mock fallback — empty journal stays empty after a clear
+
+  const iconFor = (k) => ({
+    completed:  '<path d="M5 12l5 5L20 7"/>',
+    collected:  '<circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/>',
+    episode:    '<rect x="4" y="6" width="16" height="12" rx="2"/><path d="M12 10v4"/>',
+    screenshot: '<rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="13" r="3"/>',
+    info:       '<circle cx="12" cy="12" r="9"/><path d="M12 8h0M12 12v4"/>',
+  }[k] || '<circle cx="12" cy="12" r="3"/>');
+
+  const formatActivityDate = (raw) => {
+    if (!raw) return '';
+    // ISO from main process → localised; plain string from mock → as-is
+    if (typeof raw === 'string' && raw.includes('T') && raw.endsWith('Z')) {
+      try {
+        return new Date(raw).toLocaleString(
+          getCurrentLang() === 'uk' ? 'uk-UA' : 'en-US',
+          { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }
+        );
+      } catch { return raw; }
+    }
+    return raw;
+  };
+
+  list.innerHTML = items.slice(0, 8).map(a => `
+    <li class="activity-item">
+      <span class="activity-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${iconFor(a.kind)}</svg>
+      </span>
+      <span class="activity-text">${escapeHtml(a.text)}</span>
+      <span class="activity-date">${escapeHtml(formatActivityDate(a.date))}</span>
+    </li>`).join('');
+}
+
+// ═════════════════════════════════════════════
+// 13) FooterStatusBar
+// ═════════════════════════════════════════════
+function setupFooterStatusBar() {
+  $$('.footer-social').forEach(el => {
+    el.addEventListener('click', () => {
+      const link = el.dataset.link;
+      if (link) window.electronAPI.openExternal(link);
+    });
+  });
+  $('footer-link')?.addEventListener('click', () => {
+    window.electronAPI.openExternal('https://t.me/LittleBitUA');
+  });
+  $('about-telegram')?.addEventListener('click', () => {
+    window.electronAPI.openExternal('https://t.me/LittleBitUA');
+  });
+}
+
+// ═════════════════════════════════════════════
+// UPDATE CHECK (GitHub)
+// ═════════════════════════════════════════════
+async function checkForUpdates(userTriggered = false) {
+  try {
+    const r = await window.electronAPI.checkUpdate();
+    if (!r) return;
+
+    // Render dashboard card with version
+    const numEl = $('dash-update-num');
+    const tagEl = $('dash-update-tag');
+    const dateEl = $('dash-update-date');
+    const emptyEl = $('dash-update-empty');
+    if (numEl) numEl.textContent = 'v' + r.currentVersion;
+
+    if (r.hasUpdate) {
+      if (tagEl)   { tagEl.textContent = 'Available'; tagEl.classList.add('available'); }
+      if (dateEl)  { dateEl.textContent = r.publishedAt
+        ? `Released ${new Date(r.publishedAt).toLocaleDateString()}` : ''; }
+      if (emptyEl) { emptyEl.textContent = `Нова версія v${r.latestVersion} доступна`; }
+      window.__pendingUpdate = r;
+
+      // Respect skip
+      const saved = await window.electronAPI.settingsRead();
+      if (saved.skippedUpdateVersion !== r.latestVersion) {
+        showUpdateModal(r);
+      }
+    } else {
+      if (tagEl)   { tagEl.textContent = 'Up to date'; tagEl.classList.remove('available'); }
+      if (dateEl)  dateEl.textContent = '';
+      if (emptyEl) emptyEl.textContent = userTriggered ? 'Лаунчер актуальний ✓' : 'Лаунчер актуальний.';
+    }
+  } catch { /* silent */ }
+}
+
+function showUpdateModal(r) {
+  const overlay = $('update-overlay');
+  if (!overlay) return;
+  $('update-version').textContent =
+    `Поточна: ${r.currentVersion} → Нова: ${r.latestVersion}`;
+  $('update-release-name').textContent = r.name && r.name !== r.latestVersion ? r.name : '';
+  $('update-body').innerHTML = r.body
+    ? renderMarkdownLite(r.body)
+    : '<em>No release notes.</em>';
+  overlay.classList.remove('hidden');
+
+  $('btn-update-skip').onclick = async () => {
+    await persistSettings({ skippedUpdateVersion: r.latestVersion });
+    overlay.classList.add('hidden');
+  };
+  $('btn-update-later').onclick    = () => overlay.classList.add('hidden');
+  $('btn-update-download').onclick = () => {
+    window.electronAPI.openExternal(r.htmlUrl);
+    overlay.classList.add('hidden');
+  };
+}
+
+function renderMarkdownLite(md) {
+  let s = escapeHtml(md);
+  s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+  s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  s = s.replace(/(?:^|\n)(?:[-*]\s+.+(?:\n|$))+/g, (block) => {
+    const items = block.trim().split('\n').map(l => l.replace(/^[-*]\s+/, '').trim())
+      .filter(Boolean).map(it => `<li>${it}</li>`).join('');
+    return `\n<ul>${items}</ul>`;
+  });
+  return s;
+}
+
+// ═════════════════════════════════════════════
+// MISC
+// ═════════════════════════════════════════════
+function showToast(msg, type = 'info', dur = 3000) {
+  const stack = $('toast-stack');
+  if (!stack) return;
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  stack.appendChild(el);
+  const remove = () => {
+    el.classList.add('out');
+    el.addEventListener('animationend', () => el.remove(), { once: true });
+  };
+  const tid = setTimeout(remove, dur);
+  el.addEventListener('click', () => { clearTimeout(tid); remove(); });
+}
+
+function setToggle(id, on) { const el = $(id); if (el) el.checked = !!on; }
+function setRadio(name, val) { const el = document.querySelector(`input[name="${name}"][value="${val}"]`); if (el) el.checked = true; }
+function getRadio(name)      { return document.querySelector(`input[name="${name}"]:checked`)?.value ?? ''; }
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// ═════════════════════════════════════════════
+// 19) Custom dropdowns (replace native <select> popups)
+// ═════════════════════════════════════════════
+function setupCustomSelects() {
+  document.querySelectorAll('select.form-select').forEach(buildCustomSelect);
+
+  // Close any open popups on outside click
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.custom-select.open').forEach(o => o.classList.remove('open'));
+  });
+}
+
+function buildCustomSelect(select) {
+  if (select.dataset.customWired === '1') return;
+  if (select.disabled) return; // leave disabled ones as native (visually disabled is fine)
+
+  const wrap = document.createElement('div');
+  wrap.className = 'custom-select';
+  select.parentNode.insertBefore(wrap, select);
+  wrap.appendChild(select);
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'custom-select-btn';
+  const label = document.createElement('span');
+  label.className = 'cs-label';
+  label.textContent = select.options[select.selectedIndex]?.text || '';
+  btn.appendChild(label);
+  const arrow = document.createElement('span');
+  arrow.className = 'cs-arrow';
+  arrow.innerHTML =
+    '<svg viewBox="0 0 12 12" aria-hidden="true">' +
+    '<path d="M2.5 4.5l3.5 3.5 3.5-3.5" stroke="currentColor" stroke-width="1.5" ' +
+    'fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  btn.appendChild(arrow);
+  wrap.appendChild(btn);
+
+  const popup = document.createElement('div');
+  popup.className = 'custom-select-popup';
+  Array.from(select.options).forEach(opt => {
+    const item = document.createElement('div');
+    item.className = 'cs-option';
+    item.dataset.value = opt.value;
+    item.textContent = opt.text;
+    if (opt.value === select.value) item.classList.add('active');
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      select.value = opt.value;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      label.textContent = opt.text;
+      popup.querySelectorAll('.cs-option').forEach(o =>
+        o.classList.toggle('active', o.dataset.value === opt.value));
+      wrap.classList.remove('open');
+    });
+    popup.appendChild(item);
+  });
+  wrap.appendChild(popup);
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.querySelectorAll('.custom-select.open').forEach(o => {
+      if (o !== wrap) o.classList.remove('open');
+    });
+    wrap.classList.toggle('open');
+  });
+  popup.addEventListener('click', (e) => e.stopPropagation());
+
+  // Sync if the underlying select changes programmatically
+  select.addEventListener('change', () => {
+    const txt = select.options[select.selectedIndex]?.text || '';
+    label.textContent = txt;
+    popup.querySelectorAll('.cs-option').forEach(o =>
+      o.classList.toggle('active', o.dataset.value === select.value));
+  });
+
+  select.dataset.customWired = '1';
+}
+
+// ═════════════════════════════════════════════
+// 14) TopNav view switching (HOME ↔ SETTINGS)
+// ═════════════════════════════════════════════
+function setupTopNavViews() {
+  $$('.topnav-link').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const view = btn.dataset.view || 'home';
+      switchView(view);
+    });
+  });
+}
+
+function switchView(view) {
+  $$('.topnav-link').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  if (view === 'home' || view === 'settings') {
+    document.body.dataset.view = view;
+  }
+}
+
+// ═════════════════════════════════════════════
+// 15) Topbar dropdowns (notifications + downloads)
+// ═════════════════════════════════════════════
+const notifState = { items: [] };
+const downloadsState = { items: [] };
+
+function setupTopBarDropdowns() {
+  const closeAll = () => {
+    $('notif-dropdown')?.classList.add('hidden');
+    $('downloads-dropdown')?.classList.add('hidden');
+  };
+
+  // Re-target the bell button (override placeholder from setupTopNavigation)
+  const bell = $('btn-notifications');
+  if (bell) {
+    bell.replaceWith(bell.cloneNode(true));
+    $('btn-notifications')?.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const drop = $('notif-dropdown');
+      const wasHidden = drop?.classList.contains('hidden');
+      closeAll();
+      if (wasHidden) drop?.classList.remove('hidden');
+    });
+  }
+
+  const dl = $('btn-downloads');
+  if (dl) {
+    dl.replaceWith(dl.cloneNode(true));
+    $('btn-downloads')?.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const drop = $('downloads-dropdown');
+      const wasHidden = drop?.classList.contains('hidden');
+      closeAll();
+      if (wasHidden) drop?.classList.remove('hidden');
+    });
+  }
+
+  $('btn-notif-clear')?.addEventListener('click', () => {
+    notifState.items = [];
+    renderNotifications();
+    refreshNotifBadge();
+  });
+
+  // Outside-click closes
+  document.addEventListener('click', (ev) => {
+    if (!ev.target.closest('.topnav-dropdown') &&
+        !ev.target.closest('#btn-notifications') &&
+        !ev.target.closest('#btn-downloads')) {
+      closeAll();
+    }
+  });
+}
+
+function pushNotification(item) {
+  notifState.items.unshift({
+    id:    'n-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+    title: item.title || '',
+    desc:  item.desc  || '',
+    kind:  item.kind  || 'info',
+    onClick: item.onClick,
+  });
+  if (notifState.items.length > 12) notifState.items.length = 12;
+  renderNotifications();
+  refreshNotifBadge();
+}
+
+function renderNotifications() {
+  const list = $('notif-list');
+  if (!list) return;
+  if (!notifState.items.length) {
+    list.innerHTML = '<li class="dropdown-empty">No new notifications.</li>';
+    return;
+  }
+  list.innerHTML = notifState.items.map(n => `
+    <li class="dropdown-item" data-id="${n.id}">
+      <span class="dropdown-item-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+             stroke-linecap="round" stroke-linejoin="round">
+          ${n.kind === 'update'    ? '<path d="M21 12a9 9 0 1 1-9-9c2.5 0 4.7 1 6.3 2.7"/><path d="M21 3v6h-6"/>'
+          : n.kind === 'setup'     ? '<path d="M12 2l9 4v6c0 5-4 9-9 10-5-1-9-5-9-10V6z"/>'
+          : n.kind === 'activity'  ? '<circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/>'
+          : '<circle cx="12" cy="12" r="9"/><path d="M12 8h0M12 12v4"/>'}
+        </svg>
+      </span>
+      <span class="dropdown-item-text">
+        <span class="dropdown-item-title">${escapeHtml(n.title)}</span>
+        <span class="dropdown-item-desc">${escapeHtml(n.desc)}</span>
+      </span>
+    </li>
+  `).join('');
+
+  list.querySelectorAll('.dropdown-item').forEach(li => {
+    li.addEventListener('click', () => {
+      const item = notifState.items.find(x => x.id === li.dataset.id);
+      if (item?.onClick) item.onClick();
+      $('notif-dropdown')?.classList.add('hidden');
+    });
+  });
+}
+
+function refreshNotifBadge() {
+  const b = $('notif-badge');
+  if (!b) return;
+  if (notifState.items.length > 0) {
+    b.textContent = String(notifState.items.length);
+    b.style.display = '';
+  } else {
+    b.style.display = 'none';
+  }
+}
+
+function setDownloadEntry(id, data) {
+  let entry = downloadsState.items.find(x => x.id === id);
+  if (!entry) {
+    entry = { id, title: data.title || id, status: '', pct: 0 };
+    downloadsState.items.push(entry);
+  }
+  Object.assign(entry, data);
+  renderDownloads();
+  refreshDownloadsMeta();
+}
+function clearDownload(id) {
+  downloadsState.items = downloadsState.items.filter(x => x.id !== id);
+  renderDownloads();
+  refreshDownloadsMeta();
+}
+function renderDownloads() {
+  const list = $('downloads-list');
+  if (!list) return;
+  if (!downloadsState.items.length) {
+    list.innerHTML = '<li class="dropdown-empty">No active downloads.</li>';
+    return;
+  }
+  list.innerHTML = downloadsState.items.map(d => `
+    <li class="dropdown-item">
+      <span class="dropdown-item-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/>
+        </svg>
+      </span>
+      <span class="dropdown-item-text">
+        <span class="dropdown-item-title">${escapeHtml(d.title)}</span>
+        <span class="dropdown-item-desc">${escapeHtml(d.status || '')}</span>
+        <span class="dropdown-item-bar"><div style="width: ${d.pct || 0}%"></div></span>
+      </span>
+    </li>
+  `).join('');
+}
+function refreshDownloadsMeta() {
+  const meta = $('downloads-meta');
+  if (!meta) return;
+  const n = downloadsState.items.length;
+  meta.textContent = n > 0 ? `${n} active` : '0 Updates';
+}
+
+// ═════════════════════════════════════════════
+// 16) First-run modal — folder + dpfix/4gb installer
+// ═════════════════════════════════════════════
+const firstRunState = { gameDir: null, exePath: null };
+
+async function maybeShowFirstRun() {
+  if (state.gamePath) return;       // already configured — nothing to do
+  showFirstRunModal();
+  pushNotification({
+    kind: 'setup',
+    title: 'Setup required',
+    desc:  'Specify your game folder to continue.',
+    onClick: showFirstRunModal,
+  });
+}
+
+async function showFirstRunModal() {
+  $('firstrun-overlay')?.classList.remove('hidden');
+  await runAutodetect();
+}
+function hideFirstRunModal() { $('firstrun-overlay')?.classList.add('hidden'); }
+
+async function runAutodetect() {
+  const banner = $('firstrun-detect');
+  if (!banner) return;
+  banner.classList.add('hidden');
+  try {
+    const hit = await window.electronAPI.autodetectGame?.();
+    if (!hit) return;
+    $('firstrun-detect-path').textContent = hit.dir;
+    banner.classList.remove('hidden');
+
+    // One-click accept
+    const btn = $('btn-firstrun-use-detected');
+    if (btn) {
+      btn.onclick = () => acceptDetected(hit);
+    }
+  } catch { /* silent */ }
+}
+
+function acceptDetected(hit) {
+  firstRunState.gameDir = hit.dir;
+  firstRunState.exePath = hit.exePath;
+  const dirCard = document.querySelector('.firstrun-dir');
+  dirCard?.classList.remove('error');
+  dirCard?.classList.add('ok');
+  $('firstrun-dir-path').textContent = hit.dir;
+  $('firstrun-dir-hint').textContent = `${hit.exePath.split(/[\\/]/).pop()} знайдено ✓`;
+  $('btn-firstrun-install').disabled = false;
+}
+
+function setupFirstRunModal() {
+  $('btn-firstrun-pick')?.addEventListener('click', async () => {
+    const r = await window.electronAPI.pickGameDir();
+    if (!r) return;
+    const dirCard = document.querySelector('.firstrun-dir');
+    $('firstrun-dir-path').textContent = r.dir;
+    if (r.valid) {
+      dirCard?.classList.remove('error'); dirCard?.classList.add('ok');
+      $('firstrun-dir-hint').textContent = `${r.exePath.split(/[\\/]/).pop()} знайдено ✓`;
+      $('btn-firstrun-install').disabled = false;
+      firstRunState.gameDir = r.dir;
+      firstRunState.exePath = r.exePath;
+    } else {
+      dirCard?.classList.remove('ok'); dirCard?.classList.add('error');
+      $('firstrun-dir-hint').textContent = 'У папці немає DP.exe чи DeadlyPremonition.exe — невірна директорія.';
+      $('btn-firstrun-install').disabled = true;
+    }
+  });
+
+  $('btn-firstrun-install')?.addEventListener('click', runFirstRunInstall);
+  $('btn-firstrun-back')?.addEventListener('click',    () => setFirstRunStep(1));
+  $('btn-firstrun-next-3')?.addEventListener('click',  () => setFirstRunStep(3));
+  $('btn-firstrun-finish')?.addEventListener('click',  () => {
+    hideFirstRunModal();
+    autoFindIni();
+    onGamePathChanged();
+  });
+
+  $('btn-apply-4gb')?.addEventListener('click',  applyPatch4GB);
+  $('btn-apply-dxvk')?.addEventListener('click', applyPatchDXVK);
+
+  // Subscribe to setup-progress events (also feeds dashboard UPDATE card)
+  window.electronAPI.onSetupProgress?.((msg) => {
+    updateFirstRunComponent(msg);
+    updateDashboardDownload(msg);
+  });
+}
+
+function setFirstRunStep(n) {
+  const ov = $('firstrun-overlay');
+  if (!ov) return;
+  ov.dataset.step = String(n);
+  // Update step bubbles
+  const bubbles = ov.querySelectorAll('.step-bubble');
+  bubbles.forEach((b) => {
+    const num = parseInt(b.dataset.step, 10);
+    b.classList.toggle('active', num === n);
+    b.classList.toggle('done',   num <  n);
+  });
+  // Update step connectors
+  const links = ov.querySelectorAll('.step-link');
+  links.forEach((l, idx) => l.classList.toggle('done', idx + 1 < n));
+}
+
+async function applyPatch4GB() {
+  const card = $('patch-4gb');
+  const status = $('patch-4gb-status');
+  const btn = $('btn-apply-4gb');
+  if (!firstRunState.gameDir || !firstRunState.exePath) return;
+
+  card.classList.remove('done', 'error'); card.classList.add('working');
+  status.textContent = 'Запускаю 4gb_patch.exe…';
+  btn.disabled = true;
+
+  const r = await window.electronAPI.apply4gbAuto(firstRunState.gameDir, firstRunState.exePath);
+  if (r?.success) {
+    card.classList.remove('working'); card.classList.add('done');
+    status.textContent = '✓ 4GB patch застосовано до ' + firstRunState.exePath.split(/[\\/]/).pop();
+    btn.textContent = 'Готово';
+    logActivity('completed', '4GB Patch applied');
+  } else {
+    card.classList.remove('working'); card.classList.add('error');
+    status.textContent = 'Помилка: ' + (r?.error || 'unknown');
+    btn.disabled = false;
+  }
+}
+
+async function applyPatchDXVK() {
+  const card = $('patch-dxvk');
+  const status = $('patch-dxvk-status');
+  const btn = $('btn-apply-dxvk');
+  if (!firstRunState.gameDir) return;
+
+  card.classList.remove('done', 'error'); card.classList.add('working');
+  status.textContent = 'Копіюю d9vk.dll до SysWOW64 та патчу d3d9.dll…';
+  btn.disabled = true;
+
+  const r = await window.electronAPI.applyDxvkAuto(firstRunState.gameDir);
+  if (r?.success) {
+    card.classList.remove('working'); card.classList.add('done');
+    status.textContent = `✓ DXVK активовано (заміна посилань: ${r.replacements ?? '?'})`;
+    btn.textContent = 'Готово';
+    logActivity('completed', 'DXVK applied');
+  } else {
+    card.classList.remove('working'); card.classList.add('error');
+    status.textContent = 'Помилка: ' + (r?.error || 'unknown');
+    btn.disabled = false;
+  }
+}
+
+async function runFirstRunInstall() {
+  if (!firstRunState.gameDir) return;
+
+  // Persist gamePath before install (so other features can use it)
+  state.gamePath = firstRunState.exePath;
+  await persistSettings({ gamePath: firstRunState.exePath });
+  const gp = $('game-path');
+  if (gp) gp.value = firstRunState.exePath;
+
+  // Lock UI
+  $('btn-firstrun-install').disabled = true;
+  $('btn-firstrun-pick').disabled    = true;
+
+  setDownloadEntry('setup', { title: 'Components install', status: 'Starting…', pct: 0 });
+
+  const results = await window.electronAPI.setupInstallAll(firstRunState.gameDir);
+
+  const allOk = Object.values(results).every(r => r.success);
+  if (allOk) {
+    logActivity('info', 'Components installed (DPFix + 4GB + DXVK)');
+    pushNotification({ kind: 'info', title: 'Components installed',
+                       desc: 'DPFix, 4GB Patch and DXVK cache are downloaded.' });
+    // Move to Step 2 — optional patches
+    setTimeout(() => setFirstRunStep(2), 800);
+  } else {
+    $('btn-firstrun-pick').disabled = false;
+    $('btn-firstrun-install').disabled = false;
+    showToast('Деякі компоненти не встановлено. Спробуйте ще раз.', 'warn');
+  }
+
+  setTimeout(() => clearDownload('setup'), 3000);
+}
+
+function updateFirstRunComponent(msg) {
+  const map = { 'dpfix': 'frc-dpfix', '4gb': 'frc-4gb', 'dxvk': 'frc-dxvk' };
+  const el = $(map[msg.id]);
+  if (!el) return;
+  const statusEl = el.querySelector('.firstrun-comp-status');
+  const fillEl   = el.querySelector('.firstrun-comp-fill');
+
+  el.classList.remove('downloading', 'extracting', 'done', 'error');
+  switch (msg.type) {
+    case 'downloading': {
+      el.classList.add('downloading');
+      const pct = msg.total > 0 ? (msg.downloaded / msg.total) * 100 : 0;
+      if (fillEl)   fillEl.style.width = `${pct.toFixed(1)}%`;
+      if (statusEl) statusEl.textContent =
+        `${formatBytes(msg.downloaded)} / ${msg.total > 0 ? formatBytes(msg.total) : '?'} · ${formatBytes(msg.speed)}/s`;
+      break;
+    }
+    case 'extracting':
+      el.classList.add('downloading');
+      if (fillEl)   fillEl.style.width = '100%';
+      if (statusEl) statusEl.textContent = 'Розпакування…';
+      break;
+    case 'skipped':
+      el.classList.add('done');
+      if (fillEl)   fillEl.style.width = '100%';
+      if (statusEl) statusEl.textContent = 'Вже встановлено ✓';
+      break;
+    case 'done':
+      el.classList.add('done');
+      if (fillEl)   fillEl.style.width = '100%';
+      if (statusEl) statusEl.textContent = 'Готово ✓';
+      break;
+    case 'error':
+      el.classList.add('error');
+      if (statusEl) statusEl.textContent = 'Помилка: ' + (msg.error || '');
+      break;
+  }
+}
+
+function updateDashboardDownload(msg) {
+  const progressBlock = $('dash-update-progress');
+  const emptyEl       = $('dash-update-empty');
+  if (progressBlock) progressBlock.hidden = false;
+  if (emptyEl)       emptyEl.style.display = 'none';
+
+  const compNames = { 'dpfix': 'DPFix v0.9.5', '4gb': '4GB LAA Patch', 'dxvk': 'DXVK v2.7.1' };
+  $('dash-update-name').textContent = compNames[msg.id] || msg.id;
+
+  const fill  = $('dash-update-fill');
+  const pctEl = $('dash-update-pct');
+  const stage = $('dash-update-stage');
+  const size  = $('dash-update-size');
+  const speed = $('dash-update-speed');
+  const time  = $('dash-update-time');
+
+  if (msg.type === 'downloading') {
+    const pct = msg.total > 0 ? (msg.downloaded / msg.total) * 100 : 0;
+    if (fill)  fill.style.width = `${pct}%`;
+    if (pctEl) pctEl.textContent = msg.total > 0 ? `${Math.round(pct)}%` : '—';
+    if (stage) stage.textContent = 'Downloading…';
+    if (size)  size.textContent  = `${formatBytes(msg.downloaded)} / ${msg.total > 0 ? formatBytes(msg.total) : '?'}`;
+    if (speed) speed.textContent = `${formatBytes(msg.speed)}/s`;
+    if (time && msg.speed > 0 && msg.total > 0) {
+      const remaining = (msg.total - msg.downloaded) / msg.speed;
+      time.textContent = formatSeconds(remaining);
+    }
+  } else if (msg.type === 'extracting') {
+    if (stage) stage.textContent = 'Extracting files…';
+    if (fill)  fill.style.width = '100%';
+    if (pctEl) pctEl.textContent = '—';
+  } else if (msg.type === 'done') {
+    if (stage) stage.textContent = '✓ Installed';
+    if (fill)  fill.style.width = '100%';
+    if (pctEl) pctEl.textContent = '100%';
+  } else if (msg.type === 'error') {
+    if (stage) stage.textContent = 'Error: ' + (msg.error || '');
+  }
+
+  if (msg.type === 'skipped') {
+    if (stage) stage.textContent = '✓ Already installed';
+    if (fill)  fill.style.width = '100%';
+    if (pctEl) pctEl.textContent = '✓';
+  }
+
+  // Mirror to topnav Downloads dropdown
+  setDownloadEntry(msg.id, {
+    title:  compNames[msg.id] || msg.id,
+    status: msg.type === 'downloading'
+      ? `${msg.total > 0 ? Math.round(msg.downloaded / msg.total * 100) : 0}% · ${formatBytes(msg.speed || 0)}/s`
+      : (msg.type === 'extracting' ? 'Extracting…'
+      :  msg.type === 'done'        ? 'Done ✓'
+      :  msg.type === 'error'       ? 'Error' : ''),
+    pct:    msg.type === 'done' ? 100
+         : (msg.total > 0 ? Math.round(msg.downloaded / msg.total * 100) : 0),
+  });
+  if (msg.type === 'done' || msg.type === 'error') {
+    setTimeout(() => clearDownload(msg.id), 4000);
+  }
+}
+
+function formatBytes(n) {
+  if (!n || n < 0) return '0 B';
+  if (n < 1024)       return `${n.toFixed(0)} B`;
+  if (n < 1048576)    return `${(n/1024).toFixed(1)} KB`;
+  if (n < 1073741824) return `${(n/1048576).toFixed(1)} MB`;
+  return `${(n/1073741824).toFixed(2)} GB`;
+}
+function formatSeconds(s) {
+  if (!isFinite(s) || s < 0) return '—';
+  const total = Math.round(s);
+  const hh = Math.floor(total / 3600);
+  const mm = Math.floor((total % 3600) / 60);
+  const ss = total % 60;
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+}
+
+// ═════════════════════════════════════════════
+// 17) Audio + Controls + Interface controls (persisted)
+// ═════════════════════════════════════════════
+function setupAudioInterfaceControls() {
+  // Read saved prefs
+  loadUiPrefs();
+
+  // Save on change for the simple toggles + selects
+  const persistedFields = ['opt-steam-overlay', 'opt-run-as-admin'];
+  persistedFields.forEach(id => {
+    const el = $(id);
+    if (!el) return;
+    const ev = el.type === 'checkbox' ? 'change' : (el.tagName === 'SELECT' ? 'change' : 'input');
+    el.addEventListener(ev, () => saveUiPrefs());
+  });
+
+  // Steam Overlay — functional: edits Steam userdata/<id>/config/localconfig.vdf
+  $('opt-steam-overlay')?.addEventListener('change', async (ev) => {
+    const enabled = ev.target.checked;
+    const r = await window.electronAPI.setSteamOverlay(STEAM_APPID, enabled);
+    if (r?.success) {
+      showToast(
+        enabled ? 'Steam Overlay увімкнено для DP ✓' : 'Steam Overlay вимкнено для DP ✓',
+        'success'
+      );
+      if (r.note) showToast(r.note, 'info', 5000);
+      logActivity('completed', `Steam Overlay → ${enabled ? 'on' : 'off'}`);
+    } else {
+      ev.target.checked = !enabled; // revert
+      const fails = (r?.failures && r.failures.length) ? ` (${r.failures[0]})` : '';
+      showToast('Не вдалося змінити Steam Overlay: ' + (r?.error || 'unknown') + fails, 'error');
+    }
+  });
+}
+
+async function loadUiPrefs() {
+  try {
+    const saved = await window.electronAPI.settingsRead();
+    const prefs = saved.uiPrefs || {};
+    const apply = (id, key, isCheckbox) => {
+      const el = $(id);
+      if (!el || prefs[key] === undefined) return;
+      if (isCheckbox) el.checked = !!prefs[key];
+      else            el.value   = String(prefs[key]);
+      el.dispatchEvent(new Event('input'));
+    };
+    apply('opt-steam-overlay',     'steamOverlay',     true);
+    apply('opt-run-as-admin',      'runAsAdmin',       true);
+  } catch { /* none */ }
+}
+async function saveUiPrefs() {
+  const val = (id) => $(id)?.value;
+  const chk = (id) => !!$(id)?.checked;
+  const prefs = {
+    steamOverlay: chk('opt-steam-overlay'),
+    runAsAdmin:   chk('opt-run-as-admin'),
+  };
+  await persistSettings({ uiPrefs: prefs });
+}
+
+// ═════════════════════════════════════════════
+// 18) App version + activity log
+// ═════════════════════════════════════════════
+async function loadAppVersion() {
+  try {
+    const v = await window.electronAPI.getAppVersion?.();
+    if (!v) return;
+    const tag = 'v' + v;
+    const heroV  = $('hero-version');
+    const dashV  = $('dash-update-num');
+    const aboutV = document.querySelector('.about-version');
+    if (heroV)  heroV.textContent  = tag;
+    if (dashV)  dashV.textContent  = tag;
+    if (aboutV) aboutV.textContent = tag;
+  } catch {}
+}
+
+async function logActivity(kind, text) {
+  try { await window.electronAPI.activityLog?.({ kind, text }); }
+  catch {}
+  // Also refresh dashboard activity list
+  setTimeout(renderActivity, 100);
+}
+

@@ -1,0 +1,1415 @@
+'use strict';
+
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const path  = require('path');
+const fs    = require('fs');
+const os    = require('os');
+const https = require('https');
+const { Worker } = require('worker_threads');
+
+// GitHub repo used for update checks + news feed
+const UPDATE_REPO = 'LittleBitUA/DP1-Launcher';
+
+// First-launch setup: external resources to download + extract.
+//   archive: 'zip'    → PowerShell Expand-Archive
+//            'targz'  → Windows built-in tar -xzf
+//   target:  'gameDir'    → extracted into <gameDir>
+//            'dxvkCache'  → extracted into <gameDir>/_dxvk-cache/  (kept out of game files)
+const SETUP_COMPONENTS = [
+  {
+    id:       'dpfix',
+    url:      'https://www.dropbox.com/scl/fi/i7c7tr1ndtpts2k05k1a9/dpfix095.zip?rlkey=dpiehe4gpgz06zrd7009ha7af&st=2p88cy5q&dl=1',
+    fileName: 'dpfix095.zip',
+    archive:  'zip',
+    target:   'gameDir',
+  },
+  {
+    id:       '4gb',
+    url:      'https://ntcore.com/files/4gb_patch.zip',
+    fileName: '4gb_patch.zip',
+    archive:  'zip',
+    target:   'gameDir',
+  },
+  {
+    id:       'dxvk',
+    url:      'https://github.com/doitsujin/dxvk/releases/download/v2.7.1/dxvk-2.7.1.tar.gz',
+    fileName: 'dxvk-2.7.1.tar.gz',
+    archive:  'targz',
+    target:   'dxvkCache',
+  },
+];
+
+// ─────────────────────────────────────────────
+// Worker thread lifecycle
+// ─────────────────────────────────────────────
+let iniWorker  = null;
+let saveWorker = null;
+
+function getWorker() {
+  if (iniWorker) return iniWorker;
+
+  iniWorker = new Worker(path.join(__dirname, 'workers', 'ini-worker.js'));
+
+  iniWorker.on('error', (err) => {
+    console.error('[Worker] Error:', err);
+    iniWorker = null;
+  });
+
+  iniWorker.on('exit', (code) => {
+    if (code !== 0) console.error('[Worker] Exited with code', code);
+    iniWorker = null;
+  });
+
+  return iniWorker;
+}
+
+/**
+ * Send a message to the INI worker and await the matching reply.
+ * Each message carries a unique id so concurrent calls are safe.
+ */
+function workerTask(payload) {
+  return new Promise((resolve, reject) => {
+    const worker = getWorker();
+    const id = `${Date.now()}-${Math.random()}`;
+
+    const onMessage = (msg) => {
+      if (msg.id !== id) return;
+      worker.off('message', onMessage);
+      if (msg.error) reject(new Error(msg.error));
+      else resolve(msg.result);
+    };
+
+    worker.on('message', onMessage);
+    worker.postMessage({ ...payload, id });
+  });
+}
+
+// ─────────────────────────────────────────────
+// Settings persistence (userData JSON)
+// All async — never blocks the IPC event loop.
+// ─────────────────────────────────────────────
+function getSettingsPath() {
+  return path.join(app.getPath('userData'), 'launcher-settings.json');
+}
+
+async function readSettings() {
+  try {
+    const raw = await fs.promises.readFile(getSettingsPath(), 'utf-8');
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+async function writeSettings(data) {
+  try {
+    await fs.promises.writeFile(
+      getSettingsPath(),
+      JSON.stringify(data, null, 2),
+      'utf-8'
+    );
+  } catch (err) {
+    console.error('[Settings] Write error:', err);
+  }
+}
+
+// ─────────────────────────────────────────────
+// Window
+// ─────────────────────────────────────────────
+let mainWindow;
+let splashWindow;
+
+// Splash always stays visible for at least this long so the fill
+// animation has time to complete.
+const SPLASH_MIN_MS = 3000;
+
+function createSplashWindow() {
+  splashWindow = new BrowserWindow({
+    width:           380,
+    height:          420,
+    frame:           false,
+    transparent:     true,
+    resizable:       false,
+    movable:         true,
+    alwaysOnTop:     true,
+    skipTaskbar:     false,
+    show:            false,
+    icon:            path.join(__dirname, 'assets', 'DP_LOGO.ico'),
+    backgroundColor: '#00000000',
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration:  false,
+    },
+  });
+  splashWindow.loadFile(path.join(__dirname, 'src', 'splash.html'));
+  splashWindow.once('ready-to-show', () => splashWindow.show());
+  splashWindow.on('closed', () => { splashWindow = null; });
+}
+
+function createWindow() {
+  const winOptions = {
+    width:       1440,
+    height:      900,
+    minWidth:    1180,
+    minHeight:   780,
+    resizable:   true,
+    maximizable: true,
+    frame:       false,
+    show:        false,         // stays hidden until splash finishes
+    icon:        path.join(__dirname, 'assets', 'DP_LOGO.ico'),
+    webPreferences: {
+      preload:          path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration:  false,
+      sandbox:          false,
+    },
+  };
+
+  // Windows 11: native Acrylic/Mica blur
+  if (process.platform === 'win32') {
+    winOptions.backgroundColor        = '#101012';
+    winOptions.backgroundMaterial     = 'acrylic'; // requires Electron ≥ 23 + Win 11
+    winOptions.titleBarStyle          = 'hidden';
+  } else {
+    winOptions.vibrancy               = 'dark'; // macOS
+    winOptions.backgroundColor        = '#101012';
+  }
+
+  mainWindow = new BrowserWindow(winOptions);
+  mainWindow.loadFile(path.join(__dirname, 'src', 'index.html'));
+  mainWindow.on('closed', () => { mainWindow = null; });
+
+  // Open DevTools docked to the right for live CSS tweaking.
+  mainWindow.webContents.once('did-finish-load', () => {
+    mainWindow.webContents.openDevTools({ mode: 'detach' });
+  });
+
+  // Dev shortcuts: F12 toggles DevTools, Ctrl+Shift+I does the same,
+  // Ctrl+R reloads the renderer (useful when editing CSS live).
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return;
+    const k = (input.key || '').toLowerCase();
+    if (k === 'f12' ||
+        (input.control && input.shift && k === 'i')) {
+      mainWindow.webContents.toggleDevTools();
+      event.preventDefault();
+    } else if (input.control && k === 'r') {
+      mainWindow.webContents.reload();
+      event.preventDefault();
+    }
+  });
+}
+
+/**
+ * Reveal the main window only after BOTH:
+ *   (1) the renderer reports `ready-to-show`, and
+ *   (2) the minimum splash time has elapsed.
+ * This guarantees the fill animation completes and the user never
+ * sees a flash of empty main window.
+ */
+function setupSplashFlow() {
+  let rendererReady = false;
+  let minTimePassed = false;
+
+  const reveal = () => {
+    if (!rendererReady || !minTimePassed) return;
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show();
+    if (splashWindow && !splashWindow.isDestroyed()) splashWindow.close();
+  };
+
+  mainWindow.once('ready-to-show', () => { rendererReady = true; reveal(); });
+  setTimeout(() => { minTimePassed = true; reveal(); }, SPLASH_MIN_MS);
+}
+
+app.whenReady().then(() => {
+  createSplashWindow();
+  createWindow();
+  setupSplashFlow();
+  // Pre-warm the worker thread so first INI load is instant
+  getWorker();
+});
+
+app.on('window-all-closed', () => {
+  if (iniWorker)  { iniWorker.terminate();  iniWorker  = null; }
+  if (saveWorker) { saveWorker.terminate(); saveWorker = null; }
+  app.quit();
+});
+
+// ─────────────────────────────────────────────
+// IPC – Window controls
+// ─────────────────────────────────────────────
+ipcMain.handle('window-minimize',  () => mainWindow?.minimize());
+ipcMain.handle('window-maximize',  () => {
+  if (!mainWindow) return;
+  if (mainWindow.isMaximized()) mainWindow.unmaximize();
+  else                          mainWindow.maximize();
+});
+ipcMain.handle('window-close',     () => mainWindow?.close());
+ipcMain.handle('quit-app',         () => app.quit());
+
+// ─────────────────────────────────────────────
+// IPC – INI operations  (delegated to Worker)
+// ─────────────────────────────────────────────
+ipcMain.handle('load-ini', async (_event, filePath) => {
+  return workerTask({ type: 'load', path: filePath });
+});
+
+ipcMain.handle('save-ini', async (_event, { filePath, lines, values }) => {
+  return workerTask({ type: 'save', path: filePath, lines, values });
+});
+
+// ─────────────────────────────────────────────
+// IPC – INI auto-detection  (ONLY next to game exe)
+// fs.promises.access — non-blocking via libuv thread pool
+// ─────────────────────────────────────────────
+ipcMain.handle('find-ini', async () => {
+  const settings = await readSettings();
+
+  // No game path saved yet → renderer must prompt setup first
+  if (!settings.gamePath) {
+    return { found: false, needsSetup: true };
+  }
+
+  const gameDir   = path.dirname(settings.gamePath);
+  const candidate = path.join(gameDir, 'DPfix.ini');
+
+  try {
+    await fs.promises.access(candidate, fs.constants.R_OK | fs.constants.W_OK);
+    return { found: true, path: candidate };
+  } catch {
+    return { found: false, needsSetup: false };
+  }
+});
+
+// ─────────────────────────────────────────────
+// IPC – Dialogs
+// ─────────────────────────────────────────────
+ipcMain.handle('browse-ini', async () => {
+  if (!mainWindow) return null;
+  const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+    title:      'Знайти DPfix.ini',
+    filters:    [{ name: 'INI Files', extensions: ['ini'] }, { name: 'All Files', extensions: ['*'] }],
+    properties: ['openFile'],
+  });
+  return canceled ? null : filePaths[0];
+});
+
+ipcMain.handle('browse-exe', async () => {
+  if (!mainWindow) return null;
+  const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+    title:      'Знайти виконуваний файл гри',
+    filters:    [{ name: 'Executable', extensions: ['exe'] }, { name: 'All Files', extensions: ['*'] }],
+    properties: ['openFile'],
+  });
+  return canceled ? null : filePaths[0];
+});
+
+// ─────────────────────────────────────────────
+// IPC – Game launch
+//
+// shell.openPath() wraps Windows ShellExecute — it correctly handles UAC
+// elevation prompts and file permissions on protected executables.
+// Previously used spawn() which threw an uncaught EACCES exception because
+// the child 'error' event fired after the handler had already returned.
+// ─────────────────────────────────────────────
+ipcMain.handle('launch-game', async (_event, exePath) => {
+  const errMsg = await shell.openPath(exePath);
+  if (errMsg) return { success: false, error: errMsg };
+  return { success: true };
+});
+
+// ─────────────────────────────────────────────
+// IPC – Settings persistence
+// Both handlers are async — fs.promises used internally.
+// ─────────────────────────────────────────────
+ipcMain.handle('settings-read',  async () => readSettings());
+ipcMain.handle('settings-write', async (_event, data) => { await writeSettings(data); return true; });
+
+// ─────────────────────────────────────────────
+// IPC – System locale (instant sync getter — no I/O)
+// ─────────────────────────────────────────────
+ipcMain.handle('get-locale', () => app.getLocale());
+
+// ─────────────────────────────────────────────
+// IPC – Translations  (load /loc/*.json from disk)
+//
+// Renderer calls this once at startup; both languages are returned
+// together so language switching stays synchronous afterwards.
+// ─────────────────────────────────────────────
+const LOC_DIR = path.join(__dirname, 'loc');
+
+ipcMain.handle('get-translations', async () => {
+  const read = async (file) => {
+    const raw = await fs.promises.readFile(path.join(LOC_DIR, file), 'utf-8');
+    return JSON.parse(raw);
+  };
+  const [uk, en] = await Promise.all([read('ukr.json'), read('eng.json')]);
+  return { uk, en };
+});
+
+// ─────────────────────────────────────────────
+// IPC – Open external links
+//
+// Whitelist-by-host so the renderer can't get the main process to open
+// arbitrary URLs. The known team destinations (Telegram, Discord, X,
+// YouTube) and any GitHub URL pointing at the update repo are allowed.
+// ─────────────────────────────────────────────
+const ALLOWED_HOSTS = new Set([
+  't.me',
+  'discord.gg', 'discord.com',
+  'x.com', 'twitter.com',
+  'youtube.com', 'www.youtube.com', 'youtu.be',
+]);
+
+ipcMain.handle('open-external', (_event, url) => {
+  if (typeof url !== 'string') return;
+  try {
+    const u = new URL(url);
+    if (u.protocol !== 'https:') return;
+    if (ALLOWED_HOSTS.has(u.hostname)) {
+      shell.openExternal(url);
+      return;
+    }
+    if (u.hostname === 'github.com' &&
+        u.pathname.toLowerCase().startsWith('/' + UPDATE_REPO.toLowerCase())) {
+      shell.openExternal(url);
+    }
+  } catch { /* invalid URL — ignore */ }
+});
+
+// ─────────────────────────────────────────────
+// IPC – App version
+// ─────────────────────────────────────────────
+ipcMain.handle('get-version', () => app.getVersion());
+
+// ─────────────────────────────────────────────
+// IPC – Activity log (persisted in userData/activity.json)
+// Capped at 200 most recent entries.
+// ─────────────────────────────────────────────
+function getActivityPath() {
+  return path.join(app.getPath('userData'), 'activity.json');
+}
+
+async function readActivity() {
+  try {
+    const raw = await fs.promises.readFile(getActivityPath(), 'utf-8');
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
+
+async function writeActivity(arr) {
+  try {
+    await fs.promises.writeFile(getActivityPath(), JSON.stringify(arr, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('[Activity] Write error:', err);
+  }
+}
+
+ipcMain.handle('activity-read', readActivity);
+
+ipcMain.handle('activity-log', async (_event, entry) => {
+  if (!entry || typeof entry !== 'object') return;
+  const list = await readActivity();
+  list.unshift({
+    kind: String(entry.kind || 'info'),
+    text: String(entry.text || ''),
+    date: new Date().toISOString(),
+  });
+  // keep most recent 200
+  if (list.length > 200) list.length = 200;
+  await writeActivity(list);
+  return true;
+});
+
+ipcMain.handle('activity-clear', async () => {
+  await writeActivity([]);
+  return true;
+});
+
+// ─────────────────────────────────────────────
+// IPC – Fetch news feed from GitHub raw
+//
+// Reads:  https://raw.githubusercontent.com/<repo>/main/news.json
+// Format: [ { "title": "...", "excerpt": "...", "date": "May 10, 2025" }, ... ]
+//
+// Network failures resolve to an empty list (renderer falls back to
+// bundled mock data) so the launcher stays usable offline.
+// ─────────────────────────────────────────────
+ipcMain.handle('fetch-news', () => {
+  return new Promise((resolve) => {
+    const url = `https://raw.githubusercontent.com/${UPDATE_REPO}/main/news.json`;
+    const req = https.get(url, {
+      headers: { 'User-Agent': `DP1-Launcher/${app.getVersion()}`, 'Accept': 'application/json' },
+      timeout: 6000,
+    }, (res) => {
+      // Follow up to 3 redirects (GitHub may move)
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        res.resume();
+        https.get(res.headers.location, {
+          headers: { 'User-Agent': `DP1-Launcher/${app.getVersion()}` },
+          timeout: 6000,
+        }, (r2) => handle(r2)).on('error', (err) => resolve({ items: [], error: err.message }));
+        return;
+      }
+      handle(res);
+    });
+    req.on('error',   (err) => resolve({ items: [], error: err.message }));
+    req.on('timeout', ()    => req.destroy(new Error('timeout')));
+
+    function handle(res) {
+      if (res.statusCode !== 200) {
+        res.resume();
+        return resolve({ items: [], error: `HTTP ${res.statusCode}` });
+      }
+      let raw = '';
+      res.setEncoding('utf8');
+      res.on('data', (chunk) => { raw += chunk; });
+      res.on('end', () => {
+        try {
+          const data = JSON.parse(raw);
+          const items = Array.isArray(data) ? data : (data.items || []);
+          resolve({ items });
+        } catch (err) {
+          resolve({ items: [], error: err.message });
+        }
+      });
+    }
+  });
+});
+
+// ─────────────────────────────────────────────
+// IPC – Launch game via Steam (steam://run/<appId>)
+//
+// Numeric app-id only — validated server-side to keep URL construction safe.
+// ─────────────────────────────────────────────
+ipcMain.handle('launch-steam', (_event, appId) => {
+  const id = String(appId ?? '').trim();
+  if (!/^\d{1,12}$/.test(id)) return { success: false, error: 'invalid app id' };
+  shell.openExternal(`steam://run/${id}`);
+  return { success: true };
+});
+
+// ─────────────────────────────────────────────
+// IPC – Update check (GitHub releases)
+//
+// Fetches the latest non-draft, non-prerelease release from GitHub and
+// returns { hasUpdate, currentVersion, latestVersion, name, body, htmlUrl }.
+// Pure HTTPS GET — no extra dependencies. Network failures resolve to
+// { hasUpdate: false, error } so the renderer can stay silent.
+// ─────────────────────────────────────────────
+function compareSemver(a, b) {
+  const parse = (s) => String(s).replace(/^v/i, '').split(/[.\-+]/).map(p => {
+    const n = parseInt(p, 10);
+    return Number.isNaN(n) ? 0 : n;
+  });
+  const pa = parse(a);
+  const pb = parse(b);
+  const len = Math.max(pa.length, pb.length);
+  for (let i = 0; i < len; i++) {
+    const x = pa[i] ?? 0;
+    const y = pb[i] ?? 0;
+    if (x !== y) return x < y ? -1 : 1;
+  }
+  return 0;
+}
+
+ipcMain.handle('check-update', () => {
+  return new Promise((resolve) => {
+    const currentVersion = app.getVersion();
+
+    const req = https.request({
+      hostname: 'api.github.com',
+      path:     `/repos/${UPDATE_REPO}/releases/latest`,
+      method:   'GET',
+      headers: {
+        'User-Agent': `DP1-Launcher/${currentVersion}`,
+        'Accept':     'application/vnd.github+json',
+      },
+      timeout: 6000,
+    }, (res) => {
+      // Follow a single redirect if GitHub returns one
+      if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location) {
+        res.resume();
+        return resolve({ hasUpdate: false, error: 'redirect' });
+      }
+      if (res.statusCode !== 200) {
+        res.resume();
+        return resolve({ hasUpdate: false, error: `HTTP ${res.statusCode}` });
+      }
+      let raw = '';
+      res.setEncoding('utf8');
+      res.on('data', (chunk) => { raw += chunk; });
+      res.on('end', () => {
+        try {
+          const data = JSON.parse(raw);
+          if (data.draft || data.prerelease || !data.tag_name) {
+            return resolve({ hasUpdate: false, currentVersion });
+          }
+          const latestVersion = String(data.tag_name).replace(/^v/i, '');
+          const hasUpdate = compareSemver(currentVersion, latestVersion) < 0;
+          resolve({
+            hasUpdate,
+            currentVersion,
+            latestVersion,
+            name:    data.name    || data.tag_name,
+            body:    data.body    || '',
+            htmlUrl: data.html_url || `https://github.com/${UPDATE_REPO}/releases/latest`,
+            publishedAt: data.published_at || null,
+          });
+        } catch (err) {
+          resolve({ hasUpdate: false, error: err.message });
+        }
+      });
+    });
+
+    req.on('timeout', () => { req.destroy(new Error('timeout')); });
+    req.on('error',   (err) => resolve({ hasUpdate: false, error: err.message }));
+    req.end();
+  });
+});
+
+// ─────────────────────────────────────────────
+// IPC – First-launch setup wizard
+//
+// 1) pick-game-dir       — open folder dialog, validate DeadlyPremonition.exe
+// 2) setup-install-all   — download + unzip each SETUP_COMPONENTS entry into
+//                          the chosen game directory, streaming per-component
+//                          progress events to the renderer via 'setup-progress'.
+// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// IPC – Autodetect game install
+//
+// Scans known Steam install paths + every library listed in
+// `steamapps/libraryfolders.vdf` for the game folder. Returns the
+// first match or null.
+// ─────────────────────────────────────────────
+const GAME_FOLDER_NAME = "Deadly Premonition The Director's Cut";
+// The game ships as either DP.exe or DeadlyPremonition.exe depending on
+// install/version. Both are accepted as the main executable.
+const GAME_EXE_NAMES   = ['DP.exe', 'DeadlyPremonition.exe'];
+
+async function findGameExeInDir(dir) {
+  for (const name of GAME_EXE_NAMES) {
+    const exe = path.join(dir, name);
+    try {
+      await fs.promises.access(exe, fs.constants.R_OK);
+      return exe;
+    } catch { /* try next */ }
+  }
+  return null;
+}
+
+ipcMain.handle('autodetect-game', async () => {
+  const candidate = async (dir) => {
+    const exe = await findGameExeInDir(dir);
+    return exe ? { dir, exePath: exe } : null;
+  };
+
+  // 1) Likely Steam root locations
+  const steamRoots = new Set();
+  const tryAdd = (p) => { if (p) steamRoots.add(p.replace(/[\\/]+$/, '')); };
+  tryAdd(process.env['ProgramFiles(x86)'] && path.join(process.env['ProgramFiles(x86)'], 'Steam'));
+  tryAdd(process.env['ProgramFiles']      && path.join(process.env['ProgramFiles'],      'Steam'));
+  tryAdd('C:\\Program Files (x86)\\Steam');
+  tryAdd('C:\\Program Files\\Steam');
+
+  // 2) Registry lookup — Steam stores its install path here
+  if (process.platform === 'win32') {
+    try {
+      const out = await psExec(
+        "$p = (Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\WOW6432Node\\Valve\\Steam' -Name 'InstallPath' -ErrorAction SilentlyContinue).InstallPath; " +
+        "if (-not $p) { $p = (Get-ItemProperty -Path 'HKCU:\\SOFTWARE\\Valve\\Steam' -Name 'SteamPath' -ErrorAction SilentlyContinue).SteamPath }; " +
+        "if ($p) { Write-Output $p }"
+      );
+      if (out) tryAdd(out.trim().replace(/\//g, '\\'));
+    } catch { /* registry unavailable — skip */ }
+  }
+
+  // 3) For every Steam root, parse libraryfolders.vdf to discover other libraries
+  const libraries = new Set();
+  for (const root of steamRoots) {
+    libraries.add(root);
+    const vdf = path.join(root, 'steamapps', 'libraryfolders.vdf');
+    try {
+      const raw = await fs.promises.readFile(vdf, 'utf-8');
+      // matches both old and new VDF formats: "path"   "X:\\\\Foo"
+      const re = /"path"\s+"([^"]+)"/gi;
+      let m;
+      while ((m = re.exec(raw)) !== null) {
+        libraries.add(m[1].replace(/\\\\/g, '\\').replace(/[\\/]+$/, ''));
+      }
+    } catch { /* no vdf in this root — skip */ }
+  }
+
+  // 4) Check each library
+  for (const lib of libraries) {
+    const dir = path.join(lib, 'steamapps', 'common', GAME_FOLDER_NAME);
+    const hit = await candidate(dir);
+    if (hit) return hit;
+  }
+
+  return null;
+});
+
+ipcMain.handle('pick-game-dir', async () => {
+  if (!mainWindow) return null;
+  const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+    title:      'Виберіть папку гри (Deadly Premonition: Director\'s Cut)',
+    properties: ['openDirectory'],
+  });
+  if (canceled || !filePaths[0]) return null;
+
+  const dir     = filePaths[0];
+  const exePath = await findGameExeInDir(dir);
+  return exePath
+    ? { dir, exePath, valid: true }
+    : { dir, exePath: null, valid: false };
+});
+
+/**
+ * HTTPS GET → write stream, with redirect support and a progress callback.
+ * Callback receives { downloaded, total, speed } where speed is bytes/sec.
+ */
+function downloadToFile(url, destPath, onProgress) {
+  return new Promise((resolve, reject) => {
+    let downloaded = 0;
+    let total      = 0;
+    const start    = Date.now();
+    const file     = fs.createWriteStream(destPath);
+
+    const cleanup = (err) => {
+      try { file.close(); } catch {}
+      fs.promises.unlink(destPath).catch(() => {});
+      reject(err);
+    };
+
+    const go = (currentUrl, redirectsLeft) => {
+      let parsed;
+      try { parsed = new URL(currentUrl); }
+      catch (e) { return cleanup(e); }
+
+      const req = https.get(parsed, {
+        headers: { 'User-Agent': `DP1-Launcher/${app.getVersion()}` },
+        timeout: 30000,
+      }, (res) => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          res.resume();
+          if (redirectsLeft <= 0) return cleanup(new Error('Too many redirects'));
+          return go(new URL(res.headers.location, currentUrl).toString(), redirectsLeft - 1);
+        }
+        if (res.statusCode !== 200) {
+          res.resume();
+          return cleanup(new Error(`HTTP ${res.statusCode}`));
+        }
+
+        total = parseInt(res.headers['content-length'] || '0', 10) || 0;
+
+        res.on('data', (chunk) => {
+          downloaded += chunk.length;
+          if (onProgress) {
+            const elapsed = (Date.now() - start) / 1000;
+            const speed   = elapsed > 0 ? downloaded / elapsed : 0;
+            onProgress({ downloaded, total, speed });
+          }
+        });
+
+        res.pipe(file);
+        file.on('finish', () => { file.close(() => resolve({ size: downloaded })); });
+        file.on('error',  cleanup);
+      });
+
+      req.on('timeout', () => req.destroy(new Error('Request timeout')));
+      req.on('error',   cleanup);
+    };
+
+    go(url, 5);
+  });
+}
+
+/** Extract a ZIP into a destination folder via PowerShell Expand-Archive. */
+async function extractZip(zipPath, destDir) {
+  const zp = psEscPath(zipPath);
+  const dp = psEscPath(destDir);
+  await psExec(
+    `Expand-Archive -LiteralPath "${zp}" -DestinationPath "${dp}" -Force; Write-Output 'ok'`
+  );
+}
+
+/**
+ * Extract a .tar.gz via the Windows-built-in bsdtar.
+ *
+ * Use an absolute path to `System32\tar.exe` rather than `tar` from PATH,
+ * because Git Bash / MSYS may inject a GNU tar that interprets `C:` as a
+ * remote host (yielding "Cannot connect to C: resolve failed"). The
+ * Win10+ bsdtar handles Windows paths natively without that quirk.
+ */
+function extractTarGz(tarPath, destDir) {
+  const tarExe = process.platform === 'win32'
+    ? path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe')
+    : 'tar';
+  return new Promise((resolve, reject) => {
+    require('child_process').execFile(
+      tarExe,
+      ['-xzf', tarPath, '-C', destDir],
+      { windowsHide: true },
+      (err, _stdout, stderr) => {
+        if (err) reject(new Error(stderr?.trim() || err.message));
+        else     resolve();
+      }
+    );
+  });
+}
+
+async function extractArchive(archivePath, destDir, kind) {
+  await fs.promises.mkdir(destDir, { recursive: true });
+  if (kind === 'targz') return extractTarGz(archivePath, destDir);
+  return extractZip(archivePath, destDir);
+}
+
+/**
+ * Heuristic detection of an already-installed component, so we don't
+ * re-download what's already on disk. Checks for the most distinctive
+ * file each component leaves behind.
+ */
+async function isComponentInstalled(comp, gameDir) {
+  const exists = async (p) => { try { await fs.promises.access(p); return true; } catch { return false; } };
+  switch (comp.id) {
+    case 'dpfix':
+      // DPfix drops d3d9.dll + DPfix.ini next to the game exe
+      return (await exists(path.join(gameDir, 'd3d9.dll')))
+          || (await exists(path.join(gameDir, 'DPfix.ini')));
+    case '4gb':
+      return exists(path.join(gameDir, '4gb_patch.exe'));
+    case 'dxvk': {
+      const cacheDir = path.join(gameDir, '_dxvk-cache');
+      try {
+        const entries = await fs.promises.readdir(cacheDir, { withFileTypes: true });
+        for (const e of entries) {
+          if (e.isDirectory() && /^dxvk-/i.test(e.name)) {
+            if (await exists(path.join(cacheDir, e.name, 'x32', 'd3d9.dll'))) return true;
+          }
+        }
+      } catch {}
+      return false;
+    }
+    default:
+      return false;
+  }
+}
+
+ipcMain.handle('setup-install-all', async (_event, { gameDir }) => {
+  const send = (id, type, extra = {}) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('setup-progress', { id, type, ...extra });
+    }
+  };
+
+  const results = {};
+  const dxvkCacheDir = path.join(gameDir, '_dxvk-cache');
+
+  for (const comp of SETUP_COMPONENTS) {
+    // Skip if already installed — saves bandwidth + time on re-runs
+    if (await isComponentInstalled(comp, gameDir)) {
+      send(comp.id, 'skipped');
+      results[comp.id] = { success: true, skipped: true };
+      continue;
+    }
+
+    const tmpPath = path.join(os.tmpdir(), `dp1-${Date.now()}-${comp.fileName}`);
+    const destDir =
+      comp.target === 'dxvkCache' ? dxvkCacheDir : gameDir;
+
+    try {
+      send(comp.id, 'downloading', { downloaded: 0, total: 0, speed: 0 });
+
+      await downloadToFile(comp.url, tmpPath, (p) => {
+        send(comp.id, 'downloading', p);
+      });
+
+      send(comp.id, 'extracting');
+      await extractArchive(tmpPath, destDir, comp.archive || 'zip');
+
+      send(comp.id, 'done');
+      results[comp.id] = { success: true };
+    } catch (err) {
+      console.error(`[setup] ${comp.id} failed:`, err);
+      send(comp.id, 'error', { error: err.message });
+      results[comp.id] = { success: false, error: err.message };
+    } finally {
+      fs.promises.unlink(tmpPath).catch(() => {});
+    }
+  }
+
+  return results;
+});
+
+// ─────────────────────────────────────────────
+// IPC – Apply 4GB LAA patch automatically.
+// Runs `4gb_patch.exe <targetExe>` — prefers the copy in gameDir
+// (placed by first-run install) and falls back to the bundled copy.
+// ─────────────────────────────────────────────
+ipcMain.handle('apply-4gb-auto', async (_event, { gameDir, targetExe }) => {
+  let patchExe = path.join(gameDir, '4gb_patch.exe');
+  try { await fs.promises.access(patchExe); }
+  catch { patchExe = path.join(process.resourcesPath, '4gb_patch.exe'); }
+
+  return new Promise((resolve) => {
+    const cmd = `"${patchExe}" "${targetExe}"`;
+    require('child_process').exec(
+      cmd,
+      { cwd: path.dirname(patchExe), windowsHide: false },
+      (err) => {
+        if (err) resolve({ success: false, error: err.message });
+        else     resolve({ success: true });
+      }
+    );
+  });
+});
+
+// ─────────────────────────────────────────────
+// IPC – Apply DXVK automatically.
+//
+// Two-step process:
+//   1) Copy <dxvk-cache>/dxvk-<ver>/x32/d3d9.dll  →  C:\Windows\SysWOW64\d9vk.dll
+//      (renamed; requires admin since SysWOW64 is system-protected)
+//   2) Hex-replace the ASCII string 'd3d9.dll' with 'd9vk.dll' inside the
+//      DPfix-installed <gameDir>/d3d9.dll (preserves length — 8 chars each).
+//      Creates a .bak before writing.
+// ─────────────────────────────────────────────
+const DXVK_SYS_TARGET = path.join('C:\\Windows\\SysWOW64', 'd9vk.dll');
+
+// ─────────────────────────────────────────────
+// IPC – Detect whether each post-install patch is already applied,
+// so the Step 2 cards can show a "done" state instead of offering "Так".
+//
+// 4GB LAA check:
+//   PE32 IMAGE_FILE_HEADER.Characteristics — bit 0x0020 means LAA.
+//   PE header offset is at file offset 0x3C; Characteristics sits at
+//   peOffset + 4 (signature) + 18 (offset inside COFF header).
+//
+// DXVK check:
+//   System DLL exists at SysWOW64\d9vk.dll  AND  the game's d3d9.dll
+//   contains the ASCII string "d9vk.dll" (which our hex patcher writes).
+// ─────────────────────────────────────────────
+async function isLargeAddressAware(exePath) {
+  let fh;
+  try {
+    fh = await fs.promises.open(exePath, 'r');
+    const peOffsetBuf = Buffer.alloc(4);
+    await fh.read(peOffsetBuf, 0, 4, 0x3C);
+    const peOffset = peOffsetBuf.readUInt32LE(0);
+    const charBuf = Buffer.alloc(2);
+    await fh.read(charBuf, 0, 2, peOffset + 4 + 18);
+    return (charBuf.readUInt16LE(0) & 0x0020) !== 0;
+  } catch {
+    return false;
+  } finally {
+    try { await fh?.close(); } catch {}
+  }
+}
+
+ipcMain.handle('check-4gb-applied', async (_event, { exePath }) => {
+  if (!exePath) return { applied: false };
+  return { applied: await isLargeAddressAware(exePath) };
+});
+
+// ─────────────────────────────────────────────
+// IPC – Toggle Steam Overlay for a specific Steam app
+//
+// Edits <SteamPath>/userdata/<UserID>/config/localconfig.vdf, locating the
+// app's entry under  Software → Valve → Steam → apps → "<appId>"  and
+// flipping the "OverlayAppEnable" key.
+//
+// IMPORTANT: Steam locks localconfig.vdf while running and will overwrite
+// changes on next exit. Caller should ensure Steam is closed; we still
+// write a .bak just in case.
+// ─────────────────────────────────────────────
+async function findSteamRoot() {
+  const candidates = new Set();
+  const tryAdd = (p) => { if (p) candidates.add(p.replace(/[\\/]+$/, '')); };
+  tryAdd(process.env['ProgramFiles(x86)'] && path.join(process.env['ProgramFiles(x86)'], 'Steam'));
+  tryAdd(process.env['ProgramFiles']      && path.join(process.env['ProgramFiles'],      'Steam'));
+  tryAdd('C:\\Program Files (x86)\\Steam');
+  tryAdd('C:\\Program Files\\Steam');
+  if (process.platform === 'win32') {
+    try {
+      const out = await psExec(
+        "$p = (Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\WOW6432Node\\Valve\\Steam' -Name 'InstallPath' -ErrorAction SilentlyContinue).InstallPath; " +
+        "if (-not $p) { $p = (Get-ItemProperty -Path 'HKCU:\\SOFTWARE\\Valve\\Steam' -Name 'SteamPath' -ErrorAction SilentlyContinue).SteamPath }; " +
+        "if ($p) { Write-Output $p }"
+      );
+      if (out) tryAdd(out.trim().replace(/\//g, '\\'));
+    } catch {}
+  }
+  for (const c of candidates) {
+    try { await fs.promises.access(c); return c; } catch {}
+  }
+  return null;
+}
+
+/** Brace-match a "<startMarker>" { ... } block in VDF text. */
+function findVdfBlock(text, startMarker) {
+  const idx = text.indexOf(startMarker);
+  if (idx === -1) return null;
+  let i = idx + startMarker.length;
+  while (i < text.length && text[i] !== '{') i++;
+  if (i >= text.length) return null;
+  const blockStart = i;
+  let depth = 0, j = blockStart;
+  while (j < text.length) {
+    if (text[j] === '{') depth++;
+    else if (text[j] === '}') { depth--; if (depth === 0) return { start: idx, blockStart, blockEnd: j }; }
+    j++;
+  }
+  return null;
+}
+
+function setOverlayKeyInVdf(vdf, appId, enabled) {
+  const block = findVdfBlock(vdf, `"${appId}"`);
+  if (!block) return null;
+  const body = vdf.slice(block.blockStart + 1, block.blockEnd);
+  const keyRe = /(["']OverlayAppEnable["']\s*["'])([01])(["'])/i;
+  const v = enabled ? '1' : '0';
+  let newBody;
+  if (keyRe.test(body)) {
+    newBody = body.replace(keyRe, `$1${v}$3`);
+  } else {
+    // Append before closing whitespace
+    newBody = body.replace(/(\s*)$/, `\n\t\t\t\t\t"OverlayAppEnable"\t\t"${v}"$1`);
+  }
+  return vdf.slice(0, block.blockStart + 1) + newBody + vdf.slice(block.blockEnd);
+}
+
+ipcMain.handle('set-steam-overlay', async (_event, { appId, enabled }) => {
+  const id = String(appId ?? '').trim();
+  if (!/^\d{1,12}$/.test(id)) return { success: false, error: 'invalid app id' };
+
+  const steamRoot = await findSteamRoot();
+  if (!steamRoot) return { success: false, error: 'Steam install not found' };
+
+  const userdataDir = path.join(steamRoot, 'userdata');
+  let users;
+  try { users = await fs.promises.readdir(userdataDir, { withFileTypes: true }); }
+  catch { return { success: false, error: 'No Steam userdata folder' }; }
+
+  const userDirs = users.filter(u => u.isDirectory() && /^\d+$/.test(u.name));
+  if (!userDirs.length) return { success: false, error: 'No Steam users found' };
+
+  let touched = 0;
+  const failures = [];
+  for (const u of userDirs) {
+    const configPath = path.join(userdataDir, u.name, 'config', 'localconfig.vdf');
+    try {
+      const original = await fs.promises.readFile(configPath, 'utf-8');
+      const updated  = setOverlayKeyInVdf(original, id, enabled);
+      if (!updated) {
+        failures.push(`user ${u.name}: app "${id}" entry not found`);
+        continue;
+      }
+      // Backup once
+      const bak = configPath + '.dp1-backup';
+      try { await fs.promises.access(bak); }
+      catch { await fs.promises.writeFile(bak, original, 'utf-8'); }
+      await fs.promises.writeFile(configPath, updated, 'utf-8');
+      touched++;
+    } catch (err) {
+      failures.push(`user ${u.name}: ${err.code === 'EBUSY' ? 'file locked (Steam running?)' : err.message}`);
+    }
+  }
+
+  return {
+    success: touched > 0,
+    touched,
+    failures,
+    note: 'If Steam is open it may overwrite this change on exit — close Steam first for it to stick.',
+  };
+});
+
+ipcMain.handle('check-dxvk-applied', async (_event, { gameDir }) => {
+  if (!gameDir) return { applied: false };
+  try { await fs.promises.access(DXVK_SYS_TARGET); }
+  catch { return { applied: false, reason: 'SysWOW64\\d9vk.dll missing' }; }
+  try {
+    const buf = await fs.promises.readFile(path.join(gameDir, 'd3d9.dll'));
+    const hex = buf.indexOf(Buffer.from('d9vk.dll', 'ascii')) !== -1;
+    return { applied: hex, reason: hex ? null : 'game d3d9.dll not yet patched' };
+  } catch { return { applied: false, reason: 'game d3d9.dll missing' }; }
+});
+
+async function findDxvkSourceDll(gameDir) {
+  const cacheDir = path.join(gameDir, '_dxvk-cache');
+  try {
+    const entries = await fs.promises.readdir(cacheDir, { withFileTypes: true });
+    for (const e of entries) {
+      if (!e.isDirectory() || !/^dxvk-/i.test(e.name)) continue;
+      const candidate = path.join(cacheDir, e.name, 'x32', 'd3d9.dll');
+      try { await fs.promises.access(candidate); return candidate; } catch {}
+    }
+  } catch {}
+  return null;
+}
+
+ipcMain.handle('apply-dxvk-auto', async (_event, { gameDir }) => {
+  // 1) Locate DXVK x32/d3d9.dll from cache
+  const src = await findDxvkSourceDll(gameDir);
+  if (!src) return { success: false, error: 'DXVK source not found in _dxvk-cache' };
+
+  // 2) Copy to SysWOW64\d9vk.dll  (admin required)
+  try {
+    await fs.promises.copyFile(src, DXVK_SYS_TARGET);
+  } catch (err) {
+    return {
+      success: false,
+      error: err.code === 'EPERM' || err.code === 'EACCES'
+        ? 'Потрібні права адміністратора для запису до SysWOW64'
+        : err.message,
+    };
+  }
+
+  // 3) Hex-edit game's d3d9.dll (DPfix-installed): 'd3d9.dll' → 'd9vk.dll'
+  const gameDll = path.join(gameDir, 'd3d9.dll');
+  let buf;
+  try { buf = await fs.promises.readFile(gameDll); }
+  catch (err) { return { success: false, error: 'Не знайдено DPfix d3d9.dll у папці гри' }; }
+
+  // Backup original (idempotent — won't overwrite an existing .bak)
+  const bakPath = gameDll + '.bak';
+  try {
+    await fs.promises.access(bakPath);
+  } catch {
+    await fs.promises.writeFile(bakPath, buf);
+  }
+
+  const search  = Buffer.from('d3d9.dll', 'ascii');
+  const replace = Buffer.from('d9vk.dll', 'ascii');
+  let pos = 0;
+  let count = 0;
+  while ((pos = buf.indexOf(search, pos)) !== -1) {
+    replace.copy(buf, pos);
+    pos += replace.length;
+    count++;
+  }
+
+  if (count === 0) {
+    return {
+      success: false,
+      error: 'Не знайдено посилань "d3d9.dll" у файлі — можливо, DPfix уже патчили раніше',
+    };
+  }
+
+  await fs.promises.writeFile(gameDll, buf);
+  return { success: true, replacements: count };
+});
+
+// ─────────────────────────────────────────────
+// IPC – Admin detection & elevation
+//
+// Previously used execSync('net session') which blocked the IPC event loop
+// for 1-2 seconds on every app start. Now uses async exec().
+// ─────────────────────────────────────────────
+ipcMain.handle('is-admin', () => {
+  return new Promise((resolve) => {
+    require('child_process').exec(
+      'net session',
+      { windowsHide: true },
+      (err) => resolve(!err)
+    );
+  });
+});
+
+ipcMain.handle('relaunch-as-admin', () => {
+  const { exec } = require('child_process');
+  // Escape single quotes in path
+  const exePath = process.execPath.replace(/'/g, "''");
+
+  return new Promise((resolve) => {
+    // execSync-style via exec: wait for powershell to finish before deciding to quit.
+    // Start-Process without -Wait returns immediately after UAC is accepted/declined.
+    const ps = exec(
+      `powershell.exe -NoProfile -NonInteractive -Command "Start-Process -FilePath '${exePath}' -Verb RunAs"`,
+      { windowsHide: true }
+    );
+
+    ps.on('exit', (code) => {
+      if (code === 0) {
+        // UAC accepted — new elevated instance is starting, close current one
+        resolve({ accepted: true });
+        app.quit();
+      } else {
+        // UAC declined or error — stay open
+        resolve({ accepted: false });
+      }
+    });
+
+    ps.on('error', (err) => {
+      console.error('[relaunch-as-admin] error:', err);
+      resolve({ accepted: false, error: err.message });
+    });
+  });
+});
+
+// ─────────────────────────────────────────────
+// IPC – Compatibility mode (registry)
+// Supported modes: 'xpsp3' (default), 'win98'
+// ─────────────────────────────────────────────
+const COMPAT_VALUES = {
+  xpsp3: '~ WINXPSP3',
+  win98: '~ WIN98',
+};
+
+/**
+ * Execute a PowerShell script safely via -EncodedCommand (Base64 UTF-16LE).
+ * This avoids ALL quoting/escaping issues regardless of special chars in paths
+ * (spaces, apostrophes like "Director's Cut", Cyrillic, etc.)
+ */
+function psExec(script) {
+  return new Promise((resolve, reject) => {
+    const encoded = Buffer.from(script, 'utf16le').toString('base64');
+    require('child_process').execFile(
+      'powershell.exe',
+      ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded],
+      { windowsHide: true, encoding: 'utf-8' },
+      (err, stdout, stderr) => {
+        if (err) reject(new Error((stderr || err.message).trim()));
+        else resolve(stdout.trim());
+      }
+    );
+  });
+}
+
+/** Escape a Windows path for use inside a PowerShell double-quoted string */
+function psEscPath(p) {
+  return p.replace(/`/g, '``').replace(/\$/g, '`$').replace(/"/g, '`"');
+}
+
+ipcMain.handle('get-compat-status', async (_event, exePath) => {
+  try {
+    const ep  = psEscPath(exePath);
+    const out = await psExec(
+      `$v = (Get-ItemProperty -Path "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\AppCompatFlags\\Layers" -Name "${ep}" -ErrorAction SilentlyContinue)."${ep}"; Write-Output $v`
+    );
+    if (out.includes('WINXPSP3')) return 'xpsp3';
+    if (out.includes('WIN98'))    return 'win98';
+    return 'none';
+  } catch {
+    return 'none';
+  }
+});
+
+ipcMain.handle('set-compat', async (_event, exePath, mode = 'xpsp3') => {
+  const value = COMPAT_VALUES[mode] || COMPAT_VALUES.xpsp3;
+  const ep = psEscPath(exePath);
+  await psExec(`
+$key = "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\AppCompatFlags\\Layers"
+if (-not (Test-Path $key)) { New-Item -Path $key -Force | Out-Null }
+Set-ItemProperty -Path $key -Name "${ep}" -Value "${value}" -Type String
+Write-Output 'ok'
+`);
+});
+
+ipcMain.handle('remove-compat', async (_event, exePath) => {
+  const ep = psEscPath(exePath);
+  await psExec(`
+$key = "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\AppCompatFlags\\Layers"
+Remove-ItemProperty -Path $key -Name "${ep}" -ErrorAction SilentlyContinue
+Write-Output 'ok'
+`);
+});
+
+// ─────────────────────────────────────────────
+// IPC – DXVK (d9vk.dll → SysWOW64)
+// All file operations are async (fs.promises) — non-blocking via libuv thread pool.
+// ─────────────────────────────────────────────
+const DXVK_TARGET = path.join('C:\\Windows\\SysWOW64', 'd9vk.dll');
+
+ipcMain.handle('check-dxvk', async () => {
+  try {
+    await fs.promises.access(DXVK_TARGET);
+    return true;
+  } catch {
+    return false;
+  }
+});
+
+/** Returns the bundled d9vk.dll path from resources (outside asar) */
+ipcMain.handle('get-bundled-dxvk', async () => {
+  const p = path.join(process.resourcesPath, 'd9vk.dll');
+  try {
+    await fs.promises.access(p);
+    return p;
+  } catch {
+    return null;
+  }
+});
+
+// DLL copy can be 5-15 MB — async is critical here to avoid freezing the UI.
+ipcMain.handle('install-dxvk', async (_event, sourcePath) => {
+  await fs.promises.copyFile(sourcePath, DXVK_TARGET);
+  return true;
+});
+
+ipcMain.handle('uninstall-dxvk', async () => {
+  try {
+    await fs.promises.unlink(DXVK_TARGET);
+  } catch (err) {
+    if (err.code !== 'ENOENT') throw err; // ignore "file not found"
+  }
+  return true;
+});
+
+ipcMain.handle('browse-dll', async () => {
+  if (!mainWindow) return null;
+  const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+    title:      'Вибрати d9vk.dll',
+    filters:    [{ name: 'DLL Files', extensions: ['dll'] }, { name: 'All Files', extensions: ['*'] }],
+    properties: ['openFile'],
+  });
+  return canceled ? null : filePaths[0];
+});
+
+// ─────────────────────────────────────────────
+// IPC – 4GB LAA patch
+// ─────────────────────────────────────────────
+ipcMain.handle('run-4gb-patch', async (_event, targetExe) => {
+  const patchExe = path.join(process.resourcesPath, '4gb_patch.exe');
+  const { exec }  = require('child_process');
+
+  // Run via cmd /c — bypasses Windows zone/security restrictions on spawned exes
+  const cmd = `"${patchExe}" "${targetExe}"`;
+
+  return new Promise((resolve) => {
+    exec(cmd, { cwd: path.dirname(patchExe), windowsHide: false }, (err, stdout, stderr) => {
+      if (err) resolve({ success: false, error: err.message });
+      else     resolve({ success: true });
+    });
+  });
+});
+
+// ─────────────────────────────────────────────
+// IPC – Install redist (DirectX, PhysX, VCRedist)
+// fs.promises.readdir + fs.promises.access — non-blocking directory scan.
+// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// IPC – Autosave (save-game backup via Worker)
+// ─────────────────────────────────────────────
+function getSaveWorker() {
+  if (saveWorker) return saveWorker;
+  saveWorker = new Worker(path.join(__dirname, 'workers', 'save-worker.js'));
+  saveWorker.on('error', (err) => { console.error('[SaveWorker] Error:', err); saveWorker = null; });
+  saveWorker.on('exit', () => { saveWorker = null; });
+  saveWorker.on('message', (msg) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('autosave-event', msg);
+    }
+  });
+  return saveWorker;
+}
+
+ipcMain.handle('autosave-start', (_event, gameDir, interval) => {
+  getSaveWorker().postMessage({ type: 'start', gameDir, interval });
+});
+
+ipcMain.handle('autosave-stop', () => {
+  if (saveWorker) saveWorker.postMessage({ type: 'stop' });
+});
+
+/** List all backup folders with metadata */
+ipcMain.handle('saves-list', async (_event, gameDir) => {
+  const backupsDir = path.join(gameDir, 'savedata', 'backups');
+  const metaPath   = path.join(backupsDir, 'meta.json');
+
+  let meta = {};
+  try { meta = JSON.parse(await fs.promises.readFile(metaPath, 'utf-8')); } catch { /* none yet */ }
+
+  let entries = [];
+  try {
+    const dirs = await fs.promises.readdir(backupsDir, { withFileTypes: true });
+    for (const d of dirs) {
+      if (!d.isDirectory()) continue;
+      const savFile = path.join(backupsDir, d.name, 'dp.sav');
+      try {
+        const stat = await fs.promises.stat(savFile);
+        entries.push({
+          id:          d.name,
+          date:        stat.mtime.toISOString(),
+          size:        stat.size,
+          description: meta[d.name] || '',
+        });
+      } catch { /* no dp.sav inside — skip */ }
+    }
+  } catch { /* backups dir missing */ }
+
+  // Sort newest first
+  entries.sort((a, b) => b.date.localeCompare(a.date));
+  return entries;
+});
+
+/** Restore a backup to the game savedata folder */
+ipcMain.handle('saves-restore', async (_event, gameDir, backupId) => {
+  const src  = path.join(gameDir, 'savedata', 'backups', backupId, 'dp.sav');
+  const dest = path.join(gameDir, 'savedata', 'dp.sav');
+  await fs.promises.copyFile(src, dest);
+  return true;
+});
+
+/** Delete a backup folder */
+ipcMain.handle('saves-delete', async (_event, gameDir, backupId) => {
+  const dir = path.join(gameDir, 'savedata', 'backups', backupId);
+  await fs.promises.rm(dir, { recursive: true, force: true });
+
+  // Remove from meta
+  const metaPath = path.join(gameDir, 'savedata', 'backups', 'meta.json');
+  try {
+    const meta = JSON.parse(await fs.promises.readFile(metaPath, 'utf-8'));
+    delete meta[backupId];
+    await fs.promises.writeFile(metaPath, JSON.stringify(meta, null, 2), 'utf-8');
+  } catch { /* ok */ }
+  return true;
+});
+
+/** Update description for a backup */
+ipcMain.handle('saves-set-desc', async (_event, gameDir, backupId, description) => {
+  const metaPath = path.join(gameDir, 'savedata', 'backups', 'meta.json');
+  let meta = {};
+  try { meta = JSON.parse(await fs.promises.readFile(metaPath, 'utf-8')); } catch { /* none yet */ }
+  if (description) meta[backupId] = description;
+  else delete meta[backupId];
+  await fs.promises.writeFile(metaPath, JSON.stringify(meta, null, 2), 'utf-8');
+  return true;
+});
+
+ipcMain.handle('install-redist', async (_event, gameDir) => {
+  const { exec } = require('child_process');
+  const redistDir = path.join(gameDir, 'redist');
+
+  const runInstaller = (exePath) => new Promise((resolve) => {
+    exec(`"${exePath}"`, { cwd: path.dirname(exePath), windowsHide: false }, (err) => {
+      resolve({ file: path.basename(exePath), success: !err, error: err?.message });
+    });
+  });
+
+  /** Check whether a file exists without blocking the event loop */
+  const exists = async (p) => {
+    try { await fs.promises.access(p); return true; } catch { return false; }
+  };
+
+  const results = [];
+
+  // DXSETUP.exe
+  const dxSetup = path.join(redistDir, 'DXSETUP.exe');
+  if (await exists(dxSetup)) results.push(await runInstaller(dxSetup));
+
+  // PhysX_SystemSoftware*.exe
+  try {
+    const files = await fs.promises.readdir(redistDir);
+    const physx = files.find(f => /^PhysX_SystemSoftware.*\.exe$/i.test(f));
+    if (physx) results.push(await runInstaller(path.join(redistDir, physx)));
+  } catch { /* redist dir missing */ }
+
+  // vcredist_x86.exe
+  const vcredist = path.join(redistDir, 'vcredist_x86.exe');
+  if (await exists(vcredist)) results.push(await runInstaller(vcredist));
+
+  return results;
+});
