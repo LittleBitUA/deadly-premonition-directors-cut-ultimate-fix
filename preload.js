@@ -40,6 +40,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getLocale:        ()                  => ipcRenderer.invoke('get-locale'),
   getTranslations:  ()                  => ipcRenderer.invoke('get-translations'),
   checkUpdate:      ()                  => ipcRenderer.invoke('check-update'),
+  applyUpdate:      ()                  => ipcRenderer.invoke('apply-update'),
+  onUpdateProgress: (cb)                => ipcRenderer.on('update-progress', (_e, msg) => cb(msg)),
   getAppVersion:    ()                  => ipcRenderer.invoke('get-version'),
 
   // ── Activity log ─────────────────────────────

@@ -563,6 +563,102 @@ ipcMain.handle('check-update', () => {
 });
 
 // ─────────────────────────────────────────────
+// IPC – Auto-update flow
+//
+// Finds the newest release asset (.zip) for the configured repo, downloads
+// it to %TEMP%, extracts to %TEMP%\dp1-update-<ts>\, then writes a small
+// batch file that waits for this app to exit, robocopies the new files
+// over the current install, restarts the new .exe, and self-deletes.
+// Progress events stream to the renderer via 'update-progress'.
+// ─────────────────────────────────────────────
+async function findLatestZipAssetUrl() {
+  return new Promise((resolve, reject) => {
+    https.request({
+      hostname: 'api.github.com',
+      path:     `/repos/${UPDATE_REPO}/releases/latest`,
+      method:   'GET',
+      headers:  {
+        'User-Agent': `DP1-Launcher/${app.getVersion()}`,
+        'Accept':     'application/vnd.github+json',
+      },
+      timeout: 10000,
+    }, (res) => {
+      if (res.statusCode !== 200) {
+        res.resume();
+        return reject(new Error(`HTTP ${res.statusCode}`));
+      }
+      let raw = '';
+      res.setEncoding('utf8');
+      res.on('data', (c) => { raw += c; });
+      res.on('end', () => {
+        try {
+          const data = JSON.parse(raw);
+          const asset = (data.assets || []).find(a => /\.zip$/i.test(a.name));
+          if (!asset) return reject(new Error('No ZIP asset on latest release'));
+          resolve({ url: asset.browser_download_url, name: asset.name, size: asset.size });
+        } catch (err) { reject(err); }
+      });
+    }).on('error', reject).end();
+  });
+}
+
+ipcMain.handle('apply-update', async () => {
+  const send = (type, extra = {}) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update-progress', { type, ...extra });
+    }
+  };
+  try {
+    send('locating');
+    const asset = await findLatestZipAssetUrl();
+    const tmpZip = path.join(os.tmpdir(), `dp1-update-${Date.now()}.zip`);
+
+    send('downloading', { name: asset.name, downloaded: 0, total: asset.size, speed: 0 });
+    await downloadToFile(asset.url, tmpZip, (p) => send('downloading', { ...p, name: asset.name }));
+
+    const extractDir = path.join(os.tmpdir(), `dp1-update-${Date.now()}-x`);
+    send('extracting');
+    await extractZip(tmpZip, extractDir);
+
+    // Build a batch script that swaps files + restarts the app
+    const installDir = path.dirname(process.execPath).replace(/\\/g, '\\');
+    const exeName    = path.basename(process.execPath);
+    const batchPath  = path.join(os.tmpdir(), `dp1-update-${Date.now()}.bat`);
+    const batch =
+      '@echo off\r\n' +
+      'chcp 65001 >nul\r\n' +
+      'timeout /t 2 /nobreak >nul\r\n' +
+      // Try up to 10 times in case the .exe is still locked
+      `:retry\r\n` +
+      `robocopy "${extractDir.replace(/\\/g, '\\')}" "${installDir}" /E /R:5 /W:2 /NFL /NDL /NJH /NJS >nul\r\n` +
+      `if errorlevel 8 (timeout /t 1 /nobreak >nul & goto retry)\r\n` +
+      `start "" "${path.join(installDir, exeName).replace(/\\/g, '\\')}"\r\n` +
+      `rmdir /s /q "${extractDir.replace(/\\/g, '\\')}" >nul 2>&1\r\n` +
+      `del "${tmpZip.replace(/\\/g, '\\')}" >nul 2>&1\r\n` +
+      `del "%~f0"\r\n`;
+    await fs.promises.writeFile(batchPath, batch, { encoding: 'utf8' });
+
+    send('installing');
+
+    const { spawn } = require('child_process');
+    spawn('cmd', ['/c', batchPath], {
+      detached: true,
+      stdio:    'ignore',
+      windowsHide: true,
+      shell:    false,
+    }).unref();
+
+    // Give the batch ~1.5s head start, then quit so it can replace files
+    setTimeout(() => app.quit(), 1500);
+    return { success: true };
+  } catch (err) {
+    console.error('[update] failed:', err);
+    send('error', { error: err.message });
+    return { success: false, error: err.message };
+  }
+});
+
+// ─────────────────────────────────────────────
 // IPC – First-launch setup wizard
 //
 // 1) pick-game-dir       — open folder dialog, validate DeadlyPremonition.exe

@@ -1042,17 +1042,65 @@ function showUpdateModal(r) {
     overlay.classList.add('hidden');
   };
   $('btn-update-later').onclick    = () => overlay.classList.add('hidden');
-  $('btn-update-download').onclick = () => {
-    window.electronAPI.openExternal(r.htmlUrl);
+  $('btn-update-download').onclick = async () => {
     overlay.classList.add('hidden');
+    showToast(t('update.downloading') || 'Завантаження оновлення…', 'info', 5000);
+    // Hand off to main process — it downloads, extracts, swaps files, restarts
+    const res = await window.electronAPI.applyUpdate?.();
+    if (!res?.success) {
+      showToast((t('update.failed') || 'Помилка оновлення: ') + (res?.error || ''), 'error', 6000);
+    }
+    // If success → app.quit fires in main; nothing further to do here
   };
 }
 
+// Mirror update-progress events into the dashboard's UPDATE card
+window.electronAPI.onUpdateProgress?.((msg) => {
+  const progressBlock = $('dash-update-progress');
+  const emptyEl       = $('dash-update-empty');
+  const stage         = $('dash-update-stage');
+  const fill          = $('dash-update-fill');
+  const pctEl         = $('dash-update-pct');
+  const size          = $('dash-update-size');
+  const speed         = $('dash-update-speed');
+  const time          = $('dash-update-time');
+  const nameEl        = $('dash-update-name');
+
+  if (progressBlock) progressBlock.hidden = false;
+  if (emptyEl)       emptyEl.style.display = 'none';
+  if (nameEl)        nameEl.textContent = msg.name || 'DP1 Launcher Update';
+
+  if (msg.type === 'locating') {
+    if (stage) stage.textContent = t('update.locating') || 'Знаходжу реліз…';
+  } else if (msg.type === 'downloading') {
+    const pct = msg.total > 0 ? (msg.downloaded / msg.total) * 100 : 0;
+    if (fill)  fill.style.width = `${pct}%`;
+    if (pctEl) pctEl.textContent = msg.total > 0 ? `${Math.round(pct)}%` : '—';
+    if (stage) stage.textContent = t('update.downloading') || 'Завантаження…';
+    if (size)  size.textContent  = `${formatBytes(msg.downloaded)} / ${msg.total > 0 ? formatBytes(msg.total) : '?'}`;
+    if (speed) speed.textContent = `${formatBytes(msg.speed)}/s`;
+    if (time && msg.speed > 0 && msg.total > 0) {
+      time.textContent = formatSeconds((msg.total - msg.downloaded) / msg.speed);
+    }
+  } else if (msg.type === 'extracting') {
+    if (stage) stage.textContent = t('update.extracting') || 'Розпакування…';
+    if (fill)  fill.style.width = '100%';
+  } else if (msg.type === 'installing') {
+    if (stage) stage.textContent = t('update.installing') || 'Встановлення… лаунчер перезапуститься';
+  } else if (msg.type === 'error') {
+    if (stage) stage.textContent = (t('update.failed') || 'Помилка: ') + (msg.error || '');
+  }
+});
+
 function renderMarkdownLite(md) {
-  let s = escapeHtml(md);
+  // Normalise CRLF → LF first so ^/$ anchors with the `m` flag work
+  let s = escapeHtml(md).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
   s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
-  s = s.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  // Headings — order H3 → H2 → H1 so the hash count is consumed exactly
+  s = s.replace(/^#{3}\s+(.+?)\s*$/gm, '<h3>$1</h3>');
+  s = s.replace(/^#{2}\s+(.+?)\s*$/gm, '<h2>$1</h2>');
+  s = s.replace(/^#{1}\s+(.+?)\s*$/gm, '<h1>$1</h1>');
   s = s.replace(/(?:^|\n)(?:[-*]\s+.+(?:\n|$))+/g, (block) => {
     const items = block.trim().split('\n').map(l => l.replace(/^[-*]\s+/, '').trim())
       .filter(Boolean).map(it => `<li>${it}</li>`).join('');

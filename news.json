@@ -1,17 +1,25 @@
 [
   {
+    "title_uk":   "🚀 v1.0.3 — Авто-оновлення лаунчера",
+    "title_en":   "🚀 v1.0.3 — Auto-update is live",
+    "excerpt_uk": "Кнопка «Оновити» в модалці тепер реально оновлює: качає ZIP з GitHub релізу, розпаковує, замінює файли і перезапускає. Прогрес показано в картці LAUNCHER UPDATE. Повна локалізація модалки + виправлено парсер Markdown заголовків.",
+    "excerpt_en": "The Update button now truly updates: downloads the latest GitHub release ZIP, extracts, swaps files, and restarts. Progress shown in the LAUNCHER UPDATE card. Full update-modal localization + Markdown heading parser fix.",
+    "date":       "May 18, 2026",
+    "url":        "https://github.com/LittleBitUA/DP1-Launcher/releases/tag/v1.0.3"
+  },
+  {
     "title_uk":   "🆕 v1.0.1 — Локалізація + полір UI",
     "title_en":   "🆕 v1.0.1 — Localization + UI polish",
-    "excerpt_uk": "Повна локалізація інтерфейсу (top nav, hero, dashboard, settings, footer, splash). News тягне з GitHub, картки клікабельні. Game Tips ротуються двома мовами. About компактніший із кредитами авторам компонентів. Виправлено баги: vundefined, лейбли кастомних дропдаунів. DevTools вимкнено у реліз-білді.",
-    "excerpt_en": "Full UI localization (top nav, hero, dashboard, settings, footer, splash). News card pulls from GitHub, clicking opens release page. Game Tips rotate in both languages. About is more compact with full author credits. Fixed: vundefined in update block, custom dropdown label sync. DevTools fully disabled in the release build.",
+    "excerpt_uk": "Повна локалізація інтерфейсу (top nav, hero, dashboard, settings, footer, splash). News тягне з GitHub, картки клікабельні. Game Tips ротуються двома мовами. About компактніший із кредитами авторам компонентів.",
+    "excerpt_en": "Full UI localization (top nav, hero, dashboard, settings, footer, splash). News card pulls from GitHub, clicking opens release page. Game Tips rotate in both languages. About is more compact with full author credits.",
     "date":       "May 18, 2026",
     "url":        "https://github.com/LittleBitUA/DP1-Launcher/releases/tag/v1.0.1"
   },
   {
     "title_uk":   "🎉 Перший реліз DP1 Launcher v1.0.0",
     "title_en":   "🎉 First release — DP1 Launcher v1.0.0",
-    "excerpt_uk": "Сучасний фанатський лаунчер для Deadly Premonition: The Director's Cut. Автоматичне встановлення DPFix v0.9.5 (Durante), 4GB LAA Patch (NTCore) і DXVK 2.7.1 (doitsujin). Авто-пошук гри у Steam, редактор DPfix.ini, бекапи збережень, режим сумісності, оновлення через GitHub. Створено з любов'ю від української спільноти фанатів.",
-    "excerpt_en": "Modern fan-made launcher for Deadly Premonition: The Director's Cut. Auto-install for DPFix v0.9.5 (Durante), 4GB LAA Patch (NTCore) and DXVK 2.7.1 (doitsujin). Steam library autodetect, DPfix.ini editor, save backups, compatibility modes, GitHub-powered updates. Made with love from the Ukrainian fan community.",
+    "excerpt_uk": "Сучасний фанатський лаунчер для Deadly Premonition: The Director's Cut. Автоматичне встановлення DPFix v0.9.5 (Durante), 4GB LAA Patch (NTCore) і DXVK 2.7.1 (doitsujin). Авто-пошук гри у Steam, редактор DPfix.ini, бекапи збережень, режим сумісності, оновлення через GitHub.",
+    "excerpt_en": "Modern fan-made launcher for Deadly Premonition: The Director's Cut. Auto-install for DPFix v0.9.5 (Durante), 4GB LAA Patch (NTCore) and DXVK 2.7.1 (doitsujin). Steam library autodetect, DPfix.ini editor, save backups, compatibility modes, GitHub-powered updates.",
     "date":       "May 18, 2026",
     "url":        "https://github.com/LittleBitUA/DP1-Launcher/releases/tag/v1.0.0"
   }

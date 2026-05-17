@@ -42,6 +42,18 @@
 
   "footer.authorLinks": "Посилання автора",
 
+  "update.badge":       "Доступне оновлення",
+  "update.title":       "Вийшла нова версія",
+  "update.changesHdr":  "Що нового",
+  "update.skip":        "Пропустити",
+  "update.later":       "Пізніше",
+  "update.download":    "Оновити",
+  "update.locating":    "Знаходжу реліз…",
+  "update.downloading": "Завантаження оновлення…",
+  "update.extracting":  "Розпакування…",
+  "update.installing":  "Встановлення… лаунчер перезапуститься",
+  "update.failed":      "Помилка оновлення: ",
+
   "status.searching": "Пошук DPfix.ini…",
   "status.browseIni": "Вибрати файл…",
 

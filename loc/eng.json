@@ -41,6 +41,18 @@
 
   "footer.authorLinks": "Author Links",
 
+  "update.badge":       "Update available",
+  "update.title":       "A new version is out",
+  "update.changesHdr":  "What's new",
+  "update.skip":        "Skip",
+  "update.later":       "Later",
+  "update.download":    "Update",
+  "update.locating":    "Locating release…",
+  "update.downloading": "Downloading update…",
+  "update.extracting":  "Extracting…",
+  "update.installing":  "Installing… the launcher will restart",
+  "update.failed":      "Update failed: ",
+
   "status.searching": "Searching for DPfix.ini…",
   "status.browseIni": "Choose file…",
 
