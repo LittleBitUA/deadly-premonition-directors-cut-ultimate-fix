@@ -1066,8 +1066,10 @@ html, body {
 .about-card {
   text-align: left;
   max-width: 720px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
-.about-card h3 { font-size: 16px; color: #fff; margin-bottom: 4px; }
+.about-card h3 { font-size: 15px; color: #fff; margin-bottom: 2px; }
 
 /* Log section: keep activity-list constrained to settings width */
 body[data-view="settings"] .activity-list-full {
@@ -1091,99 +1093,106 @@ body[data-view="settings"] .activity-list-full .activity-item {
 
 /* About hero + credits layout */
 .about-hero {
-  display: flex; align-items: center; gap: 14px;
-  margin-bottom: 16px;
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 10px;
 }
 .about-logo {
-  flex: 0 0 56px;
-  width: 56px; height: 56px;
-  border-radius: 14px;
+  flex: 0 0 44px;
+  width: 44px; height: 44px;
+  border-radius: 11px;
   display: grid; place-items: center;
   color: var(--red-hi);
   background:
     radial-gradient(circle at 30% 25%, rgba(255,255,255,0.18), transparent 65%),
     rgba(196,25,43,0.18);
   border: 1px solid rgba(196,25,43,0.40);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 0 18px var(--red-glow);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 0 14px var(--red-glow);
 }
-.about-logo svg { width: 28px; height: 28px; }
-.about-hero-text { display: flex; flex-direction: column; gap: 2px; }
+.about-logo svg { width: 22px; height: 22px; }
+.about-hero-text { display: flex; flex-direction: column; gap: 1px; }
+.about-card .about-version {
+  font-family: var(--font-mono);
+  color: var(--red-hi);
+  font-size: 11px;
+  margin-bottom: 0;
+}
 
 .about-intro {
-  font-size: 12.5px;
-  line-height: 1.65;
+  font-size: 12px;
+  line-height: 1.55;
   color: var(--text-2);
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 .about-intro strong { color: #fff; }
 .about-intro em     { color: var(--red-hi); font-style: normal; }
 
 .about-subhead {
-  margin: 18px 0 8px;
-  font-size: 10px;
+  margin: 12px 0 6px;
+  font-size: 9.5px;
   letter-spacing: 0.22em;
   color: var(--text-dim);
   font-weight: 700;
   text-transform: uppercase;
   border-top: 1px solid var(--border-1);
-  padding-top: 14px;
+  padding-top: 10px;
 }
 
 .about-credits {
-  display: flex; flex-direction: column; gap: 10px;
+  display: flex; flex-direction: column; gap: 6px;
   list-style: none;
   padding: 0;
 }
 .about-credits li {
-  padding: 12px 14px;
-  border-radius: 10px;
+  padding: 8px 11px;
+  border-radius: 9px;
   background: rgba(255,255,255,0.03);
   border: 1px solid var(--border-1);
 }
 .about-credit-name {
   display: block;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   color: #fff;
-  margin-bottom: 2px;
+  margin-bottom: 1px;
 }
 .about-credit-by {
   display: block;
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--red-hi);
-  letter-spacing: 0.06em;
-  margin-bottom: 6px;
+  letter-spacing: 0.05em;
+  margin-bottom: 3px;
 }
 .about-credit-desc {
   display: block;
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--text-2);
-  line-height: 1.55;
+  line-height: 1.45;
 }
 
 .about-author {
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--text-2);
-  line-height: 1.65;
+  line-height: 1.5;
 }
 .about-author strong { color: #fff; }
 .about-author em     { color: var(--red-hi); font-style: normal; }
 .about-ua            { color: #ffd93d; font-weight: 600; }
 .about-thanks {
-  margin-top: 6px;
-  font-size: 11.5px;
+  margin-top: 4px;
+  font-size: 11px;
   color: var(--text-dim);
   font-style: italic;
+  line-height: 1.45;
 }
 
-.about-links { margin-top: 6px; }
+.about-links { margin-top: 4px; }
 .about-disclaimer {
-  margin-top: 22px;
-  padding-top: 14px;
+  margin-top: 12px;
+  padding-top: 10px;
   border-top: 1px dashed var(--border-1);
   font-size: 10.5px;
   color: var(--text-faint);
-  line-height: 1.55;
+  line-height: 1.45;
   font-style: italic;
 }
 .about-card .about-version {

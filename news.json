@@ -4,6 +4,7 @@
     "title_en":   "🎉 First release — DP1 Launcher v1.0.0",
     "excerpt_uk": "Сучасний фанатський лаунчер для Deadly Premonition: The Director's Cut. Автоматичне встановлення DPFix v0.9.5 (Durante), 4GB LAA Patch (NTCore) і DXVK 2.7.1 (doitsujin). Авто-пошук гри у Steam, редактор DPfix.ini, бекапи збережень, режим сумісності, оновлення через GitHub. Створено з любов'ю від української спільноти фанатів.",
     "excerpt_en": "Modern fan-made launcher for Deadly Premonition: The Director's Cut. Auto-install for DPFix v0.9.5 (Durante), 4GB LAA Patch (NTCore) and DXVK 2.7.1 (doitsujin). Steam library autodetect, DPfix.ini editor, save backups, compatibility modes, GitHub-powered updates. Made with love from the Ukrainian fan community.",
-    "date":       "May 18, 2026"
+    "date":       "May 18, 2026",
+    "url":        "https://github.com/LittleBitUA/DP1-Launcher/releases/tag/v1.0.0"
   }
 ]

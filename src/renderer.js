@@ -428,6 +428,12 @@ function syncUIFromValues(v) {
 
   setToggle('tex-dump',     g('enableTextureDumping')  === '1');
   setToggle('tex-override', g('enableTextureOverride') === '1');
+
+  // Custom-select wrappers don't auto-update when .value is set programmatically.
+  // Dispatch a synthetic change so their visible labels reflect the loaded INI.
+  document.querySelectorAll('select.form-select').forEach(s => {
+    s.dispatchEvent(new Event('change', { bubbles: true }));
+  });
 }
 function sanitizeScale(raw, allowed) {
   const n = parseInt(raw, 10);
@@ -847,10 +853,14 @@ async function renderNews() {
         </div>
       </div>`).join('');
 
-    // Clicking a news item opens the full modal
-    list.querySelectorAll('.news-item').forEach(el => {
+    // Clicking a news item: open its URL on GitHub if provided, else open the full modal
+    list.querySelectorAll('.news-item').forEach((el, i) => {
       el.style.cursor = 'pointer';
-      el.addEventListener('click', () => openNewsModal());
+      el.addEventListener('click', () => {
+        const item = items[i];
+        if (item?.url) window.electronAPI.openExternal(item.url);
+        else           openNewsModal();
+      });
     });
   };
   renderItems(window.MOCK_DATA?.news || []);
@@ -1011,7 +1021,7 @@ async function checkForUpdates(userTriggered = false) {
     } else {
       if (tagEl)   { tagEl.textContent = 'Up to date'; tagEl.classList.remove('available'); }
       if (dateEl)  dateEl.textContent = '';
-      if (emptyEl) emptyEl.textContent = userTriggered ? 'Лаунчер актуальний ✓' : 'Лаунчер актуальний.';
+      if (emptyEl) emptyEl.textContent = (t('dash.launcherCurrent') || 'Up to date.') + (userTriggered ? ' ✓' : '');
     }
   } catch { /* silent */ }
 }
