@@ -4,12 +4,13 @@
 
 # DP1 Launcher
 
-**Сучасний фанатський лаунчер для _Deadly Premonition: The Director's Cut_**
-_Modern fan-made launcher for_ Deadly Premonition: The Director's Cut
+**Modern fan-made launcher for _Deadly Premonition: The Director's Cut_**
+<br>
+_Сучасний фанатський лаунчер для_ **Deadly Premonition: The Director's Cut**
 
 [![GitHub release](https://img.shields.io/github/v/release/LittleBitUA/DP1-Launcher?style=for-the-badge&color=c4192b)](https://github.com/LittleBitUA/DP1-Launcher/releases)
 [![License](https://img.shields.io/badge/license-MIT-c4192b?style=for-the-badge)](LICENSE)
-[![Made by Little Bit](https://img.shields.io/badge/by-Little%20Bit-c4192b?style=for-the-badge)](https://t.me/LittleBitUA)
+[![Made by Little Bit](https://img.shields.io/badge/by-%C2%ABLittle%20Bit%C2%BB-c4192b?style=for-the-badge)](https://t.me/LittleBitUA)
 
 </div>
 
@@ -125,9 +126,9 @@ free, open initiative.
 
 <div align="center">
 
-Створено **Dmytro Bidlov** з любов'ю від [Little Bit](https://t.me/LittleBitUA) 🇺🇦
+Створено **Dmytro Bidlov** з любов'ю від [«Little Bit»](https://t.me/LittleBitUA) 🇺🇦
 &nbsp;·&nbsp;
-Made by **Dmytro Bidlov** with love from [Little Bit](https://t.me/LittleBitUA) 🇺🇦
+Made by **Dmytro Bidlov** with love from [«Little Bit»](https://t.me/LittleBitUA) 🇺🇦
 
 Спасибі Swery (Hidetaka Suehiro) за безсмертну, абсурдну й щемливу гру. ✦
 

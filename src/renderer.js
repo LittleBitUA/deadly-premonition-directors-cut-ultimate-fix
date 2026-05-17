@@ -188,6 +188,8 @@ async function launchGame() {
 // ═════════════════════════════════════════════
 // 3) QuoteCard — rotating Agent York quotes
 // ═════════════════════════════════════════════
+let quoteState = { idx: 0, timer: null };
+
 function setupQuoteCard() {
   const quotes = (window.MOCK_DATA?.quotes) || [];
   if (!quotes.length) return;
@@ -197,32 +199,49 @@ function setupQuoteCard() {
     dotsEl.innerHTML = quotes.map(() => '<span class="dot"></span>').join('');
   }
 
-  let idx = quotes.findIndex(q => q.lines[0].toLowerCase().includes('dreams'));
-  if (idx < 0) idx = 0;
-  let timer = null;
-
-  const render = (i) => {
-    const q = quotes[i];
-    const text = $('quote-text');
-    const auth = $('quote-author');
-    if (text) text.innerHTML = q.lines.map(l => `<p>${escapeHtml(l)}</p>`).join('');
-    if (auth) auth.textContent = '— ' + q.author;
-    const dots = dotsEl?.children;
-    if (dots) Array.from(dots).forEach((d, di) => d.classList.toggle('active', di === i));
-  };
-  render(idx);
-
-  const tick = () => { idx = (idx + 1) % quotes.length; render(idx); };
-  timer = setInterval(tick, 8000);
+  quoteState.idx = 0;
 
   Array.from(dotsEl?.children || []).forEach((d, di) => {
     d.addEventListener('click', () => {
-      idx = di;
-      render(idx);
-      clearInterval(timer);
-      timer = setInterval(tick, 8000);
+      quoteState.idx = di;
+      renderQuote();
+      clearInterval(quoteState.timer);
+      quoteState.timer = setInterval(tickQuote, 8000);
     });
   });
+
+  renderQuote();
+  quoteState.timer = setInterval(tickQuote, 8000);
+}
+
+function pickLocalizedTipField(q, field) {
+  const lang = getCurrentLang();
+  return q[`${field}_${lang}`] || q[field] || q[`${field}_en`] || q[`${field}_uk`] || (field === 'lines' ? [] : '');
+}
+
+function renderQuote() {
+  const quotes = (window.MOCK_DATA?.quotes) || [];
+  if (!quotes.length) return;
+  const q = quotes[quoteState.idx % quotes.length];
+
+  const lines  = pickLocalizedTipField(q, 'lines');
+  const author = pickLocalizedTipField(q, 'author');
+
+  const text = $('quote-text');
+  const auth = $('quote-author');
+  if (text) text.innerHTML = (Array.isArray(lines) ? lines : [String(lines)])
+    .map(l => `<p>${escapeHtml(l)}</p>`).join('');
+  if (auth) auth.textContent = '— ' + author;
+
+  const dots = $('quote-dots')?.children;
+  if (dots) Array.from(dots).forEach((d, di) => d.classList.toggle('active', di === (quoteState.idx % quotes.length)));
+}
+
+function tickQuote() {
+  const quotes = (window.MOCK_DATA?.quotes) || [];
+  if (!quotes.length) return;
+  quoteState.idx = (quoteState.idx + 1) % quotes.length;
+  renderQuote();
 }
 
 // ═════════════════════════════════════════════
@@ -301,6 +320,10 @@ function setupSettingsFooter() {
     const lang = e.target.value;
     applyLang(lang);
     await persistSettings({ language: lang });
+    // Re-render content that comes from data (not data-i18n attributes)
+    renderQuote();
+    renderNews();
+    renderActivity();
   });
 
   $('btn-reset')?.addEventListener('click', resetDefaults);
@@ -797,34 +820,42 @@ function renderEpisodes() {
 // ═════════════════════════════════════════════
 // 10) NewsCard
 // ═════════════════════════════════════════════
+// Cached news items used by both the dashboard card and the View All modal
+let newsCache = [];
+
+function pickLocalizedNewsField(n, field) {
+  const lang = getCurrentLang();
+  return n[`${field}_${lang}`] || n[field] || n[`${field}_en`] || n[`${field}_uk`] || '';
+}
+
 async function renderNews() {
   const list = $('news-list');
   if (!list) return;
 
-  // Pick localized fields from each news item:
-  //   `title`/`excerpt` (fallback)   OR   `title_uk`/`title_en` etc.
-  const pickLocalized = (n, field) => {
-    const lang = getCurrentLang();
-    return n[`${field}_${lang}`] || n[field] || n[`${field}_en`] || n[`${field}_uk`] || '';
-  };
-
   const renderItems = (items) => {
-    list.innerHTML = items.map(n => `
-      <div class="news-item">
+    newsCache = items;
+    list.innerHTML = items.slice(0, 3).map((n, i) => `
+      <div class="news-item" data-news-idx="${i}">
         <div class="news-thumb">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
                stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h10M7 13h6"/></svg>
         </div>
         <div class="news-info">
-          <div class="news-title">${escapeHtml(pickLocalized(n, 'title'))}</div>
-          <div class="news-excerpt">${escapeHtml(pickLocalized(n, 'excerpt'))}</div>
+          <div class="news-title">${escapeHtml(pickLocalizedNewsField(n, 'title'))}</div>
+          <div class="news-excerpt">${escapeHtml(pickLocalizedNewsField(n, 'excerpt'))}</div>
           <span class="news-date">${escapeHtml(n.date || '')}</span>
         </div>
       </div>`).join('');
+
+    // Clicking a news item opens the full modal
+    list.querySelectorAll('.news-item').forEach(el => {
+      el.style.cursor = 'pointer';
+      el.addEventListener('click', () => openNewsModal());
+    });
   };
   renderItems(window.MOCK_DATA?.news || []);
 
-  // 2) Try GitHub feed in the background; override on success
+  // Try GitHub feed; override on success
   try {
     const r = await window.electronAPI.fetchNews?.();
     if (r && Array.isArray(r.items) && r.items.length) {
@@ -832,6 +863,43 @@ async function renderNews() {
     }
   } catch { /* silent — keep mock */ }
 }
+
+function openNewsModal() {
+  const overlay = $('news-overlay');
+  const body    = $('news-modal-body');
+  if (!overlay || !body) return;
+
+  if (!newsCache.length) {
+    body.innerHTML = '<p class="settings-placeholder">Поки що новин немає.</p>';
+  } else {
+    body.innerHTML = newsCache.map(n => `
+      <div class="news-item">
+        <div class="news-thumb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+               stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h10M7 13h6"/></svg>
+        </div>
+        <div class="news-info">
+          <div class="news-title">${escapeHtml(pickLocalizedNewsField(n, 'title'))}</div>
+          <div class="news-excerpt">${escapeHtml(pickLocalizedNewsField(n, 'excerpt'))}</div>
+          <span class="news-date">${escapeHtml(n.date || '')}</span>
+        </div>
+      </div>
+    `).join('');
+  }
+  overlay.classList.remove('hidden');
+}
+function closeNewsModal() { $('news-overlay')?.classList.add('hidden'); }
+
+// Wire the "View All" button + close button + outside-click
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('[data-action="view-news"]').forEach(btn => {
+    btn.addEventListener('click', openNewsModal);
+  });
+  $('btn-news-close')?.addEventListener('click', closeNewsModal);
+  $('news-overlay')?.addEventListener('click', (e) => {
+    if (e.target === $('news-overlay')) closeNewsModal();
+  });
+});
 
 // ═════════════════════════════════════════════
 // 11) ProfileCard
@@ -921,12 +989,12 @@ async function checkForUpdates(userTriggered = false) {
     const r = await window.electronAPI.checkUpdate();
     if (!r) return;
 
-    // Render dashboard card with version
+    // Render dashboard card with version (only if defined)
     const numEl = $('dash-update-num');
     const tagEl = $('dash-update-tag');
     const dateEl = $('dash-update-date');
     const emptyEl = $('dash-update-empty');
-    if (numEl) numEl.textContent = 'v' + r.currentVersion;
+    if (numEl && r.currentVersion) numEl.textContent = 'v' + r.currentVersion;
 
     if (r.hasUpdate) {
       if (tagEl)   { tagEl.textContent = 'Available'; tagEl.classList.add('available'); }

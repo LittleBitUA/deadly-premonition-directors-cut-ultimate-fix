@@ -2,6 +2,9 @@
   "btn.minimize": "Minimize",
   "btn.close":    "Close",
 
+  "nav.home": "HOME",
+  "nav.settings": "SETTINGS",
+
   "status.searching": "Searching for DPfix.ini…",
   "status.browseIni": "Choose file…",
 

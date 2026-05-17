@@ -179,10 +179,7 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, 'src', 'index.html'));
   mainWindow.on('closed', () => { mainWindow = null; });
 
-  // Open DevTools docked to the right for live CSS tweaking.
-  mainWindow.webContents.once('did-finish-load', () => {
-    mainWindow.webContents.openDevTools({ mode: 'detach' });
-  });
+  // DevTools is OFF by default — press F12 in dev to open.
 
   // Dev shortcuts: F12 toggles DevTools, Ctrl+Shift+I does the same,
   // Ctrl+R reloads the renderer (useful when editing CSS live).
@@ -564,7 +561,7 @@ ipcMain.handle('check-update', () => {
     });
 
     req.on('timeout', () => { req.destroy(new Error('timeout')); });
-    req.on('error',   (err) => resolve({ hasUpdate: false, error: err.message }));
+    req.on('error',   (err) => resolve({ hasUpdate: false, currentVersion, error: err.message }));
     req.end();
   });
 });

@@ -13,59 +13,99 @@
 
 window.MOCK_DATA = {
 
-  // Rotating gameplay troubleshooting tips for the hero card
+  // Rotating gameplay troubleshooting tips for the hero card (bilingual)
   quotes: [
     {
-      lines: [
+      lines_uk: [
         'Гра вилітає на старті?',
         'Перевірте, що 4GB Patch',
         'застосовано — Saves → Patch.',
       ],
-      author: 'CRASH FIX',
+      lines_en: [
+        'Game crashes on launch?',
+        'Make sure 4GB Patch is applied',
+        'in Saves → Patch.',
+      ],
+      author_uk: 'CRASH FIX',
+      author_en: 'CRASH FIX',
     },
     {
-      lines: [
+      lines_uk: [
         'Низький FPS чи мікрофризи?',
         'DXVK переводить гру',
         'на Vulkan — ставте через',
         'першозапуск.',
       ],
-      author: 'PERFORMANCE',
+      lines_en: [
+        'Low FPS or microstutter?',
+        'DXVK reroutes the game',
+        'through Vulkan — enable it',
+        'via the first-run setup.',
+      ],
+      author_uk: 'ПРОДУКТИВНІСТЬ',
+      author_en: 'PERFORMANCE',
     },
     {
-      lines: [
+      lines_uk: [
         'Втратили збереження?',
         'Лаунчер зберігає копії',
         'кожні 2 хвилини — Settings',
         '→ Saves → Backups.',
       ],
-      author: 'AUTOSAVE',
+      lines_en: [
+        'Lost a save?',
+        'The launcher backs up every',
+        '2 minutes — Settings →',
+        'Saves → Backups.',
+      ],
+      author_uk: 'АВТОЗБЕРЕЖЕННЯ',
+      author_en: 'AUTOSAVE',
     },
     {
-      lines: [
+      lines_uk: [
         'Розмиті текстури',
         'або погані тіні?',
         'Settings → Graphics —',
         'збільште Shadow / SSAO.',
       ],
-      author: 'GRAPHICS',
+      lines_en: [
+        'Blurry textures or weak',
+        'shadows? Settings → Graphics',
+        '— raise Shadow Resolution',
+        'and enable SSAO.',
+      ],
+      author_uk: 'ГРАФІКА',
+      author_en: 'GRAPHICS',
     },
     {
-      lines: [
+      lines_uk: [
         'Гра не запускається?',
         'Спробуйте Compatibility',
         'XP SP3 — Accessibility tab.',
       ],
-      author: 'COMPAT',
+      lines_en: [
+        "Game won't start?",
+        'Try XP SP3 compatibility',
+        'in Accessibility tab.',
+      ],
+      author_uk: 'СУМІСНІСТЬ',
+      author_en: 'COMPAT',
     },
     {
-      lines: [
+      lines_uk: [
         'Чорний екран при запуску?',
         'Перевірте Display Mode у',
         'Settings → Graphics. Спершу',
         'Borderless, потім Fullscreen.',
       ],
-      author: 'DISPLAY',
+      lines_en: [
+        'Black screen on launch?',
+        'Check Display Mode under',
+        'Settings → Graphics. Try',
+        'Borderless first, then Fullscreen.',
+      ],
+      author_uk: 'ДИСПЛЕЙ',
+      author_en: 'DISPLAY',
     },
   ],
 

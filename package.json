@@ -1,7 +1,7 @@
 {
   "name": "dp1-launcher",
   "version": "1.0.0",
-  "description": "Deadly Premonition DPFix Launcher by Little Bit",
+  "description": "Deadly Premonition DPFix Launcher by «Little Bit»",
   "main": "main.js",
   "scripts": {
     "start": "electron .",

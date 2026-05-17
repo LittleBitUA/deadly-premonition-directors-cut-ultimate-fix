@@ -2,6 +2,9 @@
   "btn.minimize": "Згорнути",
   "btn.close": "Закрити",
 
+  "nav.home": "ГОЛОВНА",
+  "nav.settings": "НАЛАШТУВАННЯ",
+
   "status.searching": "Пошук DPfix.ini…",
   "status.browseIni": "Вибрати файл…",
 
