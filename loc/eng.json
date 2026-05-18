@@ -23,6 +23,7 @@
   "dash.saveBackups":    "SAVE BACKUPS",
   "dash.upToDate":       "Up to date",
   "dash.available":      "Available",
+  "dash.launcherCurrent": "Launcher is up to date.",
   "dash.noBackups":      "No save backups yet.",
 
   "settings.general":         "General",
