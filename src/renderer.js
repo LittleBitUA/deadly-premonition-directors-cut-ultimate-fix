@@ -165,7 +165,7 @@ async function launchGame() {
   btn?.classList.add('launching');
   const label = btn?.querySelector('.btn-launch-label');
   const prev  = label?.textContent;
-  if (label) label.textContent = 'LAUNCHING…';
+  if (label) label.textContent = t('hero.launching');
 
   try {
     const res = await window.electronAPI.launchSteam(STEAM_APPID);
@@ -181,7 +181,7 @@ async function launchGame() {
   } finally {
     state.isLaunching = false;
     btn?.classList.remove('launching');
-    if (label && prev) label.textContent = prev;
+    if (label) label.textContent = prev || t('hero.launch');
   }
 }
 
@@ -201,13 +201,30 @@ function setupQuoteCard() {
 
   quoteState.idx = 0;
 
+  const restartTimer = () => {
+    clearInterval(quoteState.timer);
+    quoteState.timer = setInterval(tickQuote, 8000);
+  };
+
   Array.from(dotsEl?.children || []).forEach((d, di) => {
     d.addEventListener('click', () => {
       quoteState.idx = di;
       renderQuote();
-      clearInterval(quoteState.timer);
-      quoteState.timer = setInterval(tickQuote, 8000);
+      restartTimer();
     });
+  });
+
+  $('quote-prev')?.addEventListener('click', () => {
+    const n = (window.MOCK_DATA?.quotes || []).length || 1;
+    quoteState.idx = (quoteState.idx - 1 + n) % n;
+    renderQuote();
+    restartTimer();
+  });
+  $('quote-next')?.addEventListener('click', () => {
+    const n = (window.MOCK_DATA?.quotes || []).length || 1;
+    quoteState.idx = (quoteState.idx + 1) % n;
+    renderQuote();
+    restartTimer();
   });
 
   renderQuote();
@@ -1006,10 +1023,15 @@ async function checkForUpdates(userTriggered = false) {
     if (numEl && r.currentVersion) numEl.textContent = 'v' + r.currentVersion;
 
     if (r.hasUpdate) {
-      if (tagEl)   { tagEl.textContent = 'Available'; tagEl.classList.add('available'); }
-      if (dateEl)  { dateEl.textContent = r.publishedAt
-        ? `Released ${new Date(r.publishedAt).toLocaleDateString()}` : ''; }
-      if (emptyEl) { emptyEl.textContent = `Нова версія v${r.latestVersion} доступна`; }
+      if (tagEl)   { tagEl.textContent = t('dash.available'); tagEl.classList.add('available'); }
+      if (dateEl)  {
+        if (r.publishedAt) {
+          const dateStr = new Date(r.publishedAt).toLocaleDateString(
+            getCurrentLang() === 'uk' ? 'uk-UA' : 'en-US');
+          dateEl.textContent = t('dash.released').replace('{date}', dateStr);
+        } else { dateEl.textContent = ''; }
+      }
+      if (emptyEl) { emptyEl.textContent = t('dash.newVersionAvailable').replace('{v}', r.latestVersion); }
       window.__pendingUpdate = r;
 
       // Respect skip
@@ -1018,9 +1040,9 @@ async function checkForUpdates(userTriggered = false) {
         showUpdateModal(r);
       }
     } else {
-      if (tagEl)   { tagEl.textContent = 'Up to date'; tagEl.classList.remove('available'); }
+      if (tagEl)   { tagEl.textContent = t('dash.upToDate'); tagEl.classList.remove('available'); }
       if (dateEl)  dateEl.textContent = '';
-      if (emptyEl) emptyEl.textContent = (t('dash.launcherCurrent') || 'Up to date.') + (userTriggered ? ' ✓' : '');
+      if (emptyEl) emptyEl.textContent = t('dash.launcherCurrent') + (userTriggered ? ' ✓' : '');
     }
   } catch { /* silent */ }
 }

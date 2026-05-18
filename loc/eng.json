@@ -14,6 +14,8 @@
 
   "hero.gameReady":       "Game Ready",
   "hero.setupRequired":   "Setup Required",
+  "hero.launch":          "LAUNCH",
+  "hero.launching":       "LAUNCHING…",
 
   "tips.label": "GAME TIPS",
 
@@ -24,6 +26,8 @@
   "dash.upToDate":       "Up to date",
   "dash.available":      "Available",
   "dash.launcherCurrent": "Launcher is up to date.",
+  "dash.released":        "Released {date}",
+  "dash.newVersionAvailable": "New version v{v} available",
   "dash.noBackups":      "No save backups yet.",
 
   "settings.general":         "General",
@@ -34,8 +38,8 @@
   "settings.about":           "About",
   "settings.restore":         "Restore Defaults",
   "settings.save":            "Save Changes",
-  "settings.launcherLang":    "Launcher Language",
-  "settings.launcherLangHint":"UI language of the launcher",
+  "settings.launcherLang":    "Launcher language",
+  "settings.launcherLangHint":"Choose the launcher interface language.",
   "settings.launchOpts":      "Launch Options",
   "settings.steamOverlay":    "Enable Steam Overlay",
   "settings.runAsAdmin":      "Run as Administrator",
@@ -110,16 +114,16 @@
   "accessibility.applyXP":      "Apply XP SP3",
   "accessibility.apply98":      "Apply Win 98 / Me",
 
-  "saves.help":           "The launcher automatically backs up your <code>dp.sav</code> every 2 minutes so you never lose progress on a crash.",
+  "saves.help":           "The launcher automatically backs up your <code>dp.sav</code> file every 2 minutes, so you won’t lose progress if the game crashes.",
   "saves.autoLabel":      "Auto-Save Backup",
   "saves.on":             "On",
   "saves.listHeader":     "Backups",
   "saves.empty":          "No backups yet.",
 
-  "log.help":             "Launcher event log: launches, settings saves, component installs, applied patches. Last 200 entries are kept.",
+  "log.help":             "Launcher event log: launches, saved settings, component installations, and applied patches. The last 200 entries are kept.",
   "log.clear":            "Clear log",
 
-  "about.intro":          "This is a <strong>fan-made launcher</strong> built with a single goal — to make playing <em>Deadly Premonition: The Director's Cut</em> as comfortable as possible: one LAUNCH click instead of an hour-long ritual with DPfix, the 4GB patch, DXVK and registry tinkering. All required components are downloaded and installed by the launcher.",
+  "about.intro":          "This is a <strong>fan-made launcher</strong> built with one goal in mind: to make playing <em>Deadly Premonition: The Director's Cut</em> as comfortable as possible. One click of the LAUNCH button instead of an hour-long ritual with DPfix, 4GB Patch, DXVK, and registry tweaks. The launcher automatically downloads and installs all required components.",
   "about.components":     "Components used",
   "about.dpfixDesc":      "Graphics fix — custom resolutions, anti-aliasing, shadows, SSAO, UI corrections.",
   "about.fourGbDesc":     "Removes the 2 GB RAM ceiling for the 32-bit game process.",
@@ -127,7 +131,7 @@
   "about.author":         "Launcher author",
   "about.authorLine":     "<strong>Dmytro Bidlov</strong> — made with love from the <span class=\"about-ua\">Ukrainian 🇺🇦 fan community</span> for <em>Deadly Premonition</em>.",
   "about.thanks":         "Thanks to Swery (Hidetaka Suehiro) for an immortal, absurd, and heart-warming game.",
-  "about.disclaimer":     "This launcher is not affiliated with Access Games / Rising Star Games / Toybox Inc. All rights to the game belong to their respective owners. This is a fan-made, free initiative with an open heart.",
+  "about.disclaimer":     "This launcher is not affiliated with, endorsed by, or associated with Access Games, Rising Star Games, or Toybox Inc. All rights to Deadly Premonition: The Director's Cut belong to their respective owners. This is a free fan-made project created with an open heart.",
 
   "status.searching": "Searching for DPfix.ini…",
   "status.browseIni": "Choose file…",

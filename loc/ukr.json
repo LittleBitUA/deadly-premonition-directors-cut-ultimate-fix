@@ -14,6 +14,8 @@
 
   "hero.gameReady": "Гра готова",
   "hero.setupRequired": "Потрібно налаштувати",
+  "hero.launch": "ГРАТИ",
+  "hero.launching": "ЗАПУСК…",
 
   "tips.label": "ПОРАДИ",
 
@@ -23,6 +25,8 @@
   "dash.saveBackups":    "РЕЗЕРВНІ КОПІЇ",
   "dash.upToDate":       "Актуально",
   "dash.launcherCurrent": "Лаунчер актуальний.",
+  "dash.released":        "Опубліковано {date}",
+  "dash.newVersionAvailable": "Нова версія v{v} доступна",
   "dash.available":      "Доступне",
   "dash.noBackups":      "Резервних копій поки немає.",
 
@@ -34,8 +38,8 @@
   "settings.about":           "Про програму",
   "settings.restore":         "Скинути до стандартних",
   "settings.save":            "Зберегти зміни",
-  "settings.launcherLang":    "Мова інтерфейсу",
-  "settings.launcherLangHint":"мова інтерфейсу лаунчера",
+  "settings.launcherLang":    "Мова лаунчера",
+  "settings.launcherLangHint":"Виберіть мову інтерфейсу лаунчера.",
   "settings.launchOpts":      "Параметри запуску",
   "settings.steamOverlay":    "Увімкнути Steam Overlay",
   "settings.runAsAdmin":      "Запускати від адміністратора",
@@ -110,16 +114,16 @@
   "accessibility.applyXP":      "Застосувати XP SP3",
   "accessibility.apply98":      "Застосувати Win 98 / Me",
 
-  "saves.help":           "Лаунчер автоматично робить резервні копії вашого <code>dp.sav</code> кожні 2 хвилини, щоб ви не втратили прогрес при вильотах.",
+  "saves.help":           "Автоматичне резервне копіювання <code>dp.sav</code> кожні 2 хвилини захищає ваш прогрес у разі вильоту гри.",
   "saves.autoLabel":      "Автозбереження",
   "saves.on":             "Увімкнено",
   "saves.listHeader":     "Резервні копії",
   "saves.empty":          "Резервних копій поки немає.",
 
-  "log.help":             "Журнал подій лаунчера: запуски, збереження налаштувань, встановлення компонентів, застосовані патчі. Зберігаються останні 200 записів.",
+  "log.help":             "Журнал подій лаунчера: запуски, налаштування, компоненти й патчі. Зберігає останні 200 записів.",
   "log.clear":            "Очистити журнал",
 
-  "about.intro":          "Це <strong>фанатський лаунчер</strong>, створений з єдиною метою — зробити ігровий досвід <em>Deadly Premonition: The Director's Cut</em> максимально комфортним: одне натискання LAUNCH замість години ритуалу з DPfix, 4GB-патчем, DXVK і танцями навколо реєстру. Усі необхідні компоненти лаунчер завантажує та встановлює сам.",
+  "about.intro":          "Це <strong>фанатський лаунчер</strong>, створений з однією метою: зробити гру <em>Deadly Premonition: The Director's Cut</em> максимально комфортною. Одне натискання кнопки LAUNCH замість годинного ритуалу з DPfix, 4GB Patch, DXVK і налаштуваннями реєстру. Усі необхідні компоненти лаунчер завантажує та встановлює автоматично.",
   "about.components":     "Що використовується",
   "about.dpfixDesc":      "Графічний фіксер — кастомні роздільні здатності, anti-aliasing, тіні, SSAO, виправлення інтерфейсу.",
   "about.fourGbDesc":     "Знімає обмеження 2 ГБ оперативної пам'яті для 32-бітного процесу гри.",
@@ -127,7 +131,7 @@
   "about.author":         "Автор лаунчера",
   "about.authorLine":     "<strong>Dmytro Bidlov</strong> — створено з любов'ю від <span class=\"about-ua\">української 🇺🇦 спільноти фанатів</span> <em>Deadly Premonition</em>.",
   "about.thanks":         "Спасибі Swery (Hidetaka Suehiro) за безсмертну, абсурдну і щемливу гру.",
-  "about.disclaimer":     "Лаунчер не афілійований із Access Games / Rising Star Games / Toybox Inc. Усі права на гру належать правовласникам. Цей проєкт — фанатська ініціатива, безкоштовно і з відкритою душею.",
+  "about.disclaimer":     "Цей лаунчер не пов’язаний, не схвалений і не підтримується компаніями Access Games, Rising Star Games або Toybox Inc. Усі права на Deadly Premonition: The Director's Cut належать відповідним правовласникам. Це безкоштовний фанатський проєкт, створений з відкритим серцем.",
 
   "status.searching": "Пошук DPfix.ini…",
   "status.browseIni": "Вибрати файл…",

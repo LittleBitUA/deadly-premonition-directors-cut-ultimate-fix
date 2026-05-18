@@ -152,7 +152,7 @@ function createSplashWindow() {
     try { if ((app.getLocale() || '').startsWith('uk')) lang = 'uk'; } catch {}
   }
   splashWindow.loadFile(path.join(__dirname, 'src', 'splash.html'),
-                         { search: '?lang=' + lang });
+                         { query: { lang } });
   splashWindow.once('ready-to-show', () => splashWindow.show());
   splashWindow.on('closed', () => { splashWindow = null; });
 }

@@ -17,17 +17,13 @@ window.MOCK_DATA = {
   quotes: [
     {
       lines_uk: [
-        'Гра вилітає на старті?',
-        'Перевірте, що 4GB Patch',
-        'застосовано — Saves → Patch.',
+        'Якщо гра вилітає в одному й тому самому місці, спробуйте скористатися внутрішньоігровими цигарками та промотати час. Іноді це допомагає обійти нестабільні події або скрипти.',
       ],
       lines_en: [
-        'Game crashes on launch?',
-        'Make sure 4GB Patch is applied',
-        'in Saves → Patch.',
+        'If the game keeps crashing in the same spot, try using the in-game cigarettes to pass time. This can sometimes help bypass unstable events or scripts.',
       ],
-      author_uk: 'CRASH FIX',
-      author_en: 'CRASH FIX',
+      author_uk: 'ВИПРАВЛЕННЯ ВИЛЬОТІВ',
+      author_en: 'CRASH FIXES',
     },
     {
       lines_uk: [
@@ -79,17 +75,13 @@ window.MOCK_DATA = {
     },
     {
       lines_uk: [
-        'Гра не запускається?',
-        'Спробуйте Compatibility',
-        'XP SP3 — Accessibility tab.',
+        'Гра не запускається? Спробуйте ввімкнути режим сумісності з Windows XP (Service Pack 3) на вкладці «Доступність».',
       ],
       lines_en: [
-        "Game won't start?",
-        'Try XP SP3 compatibility',
-        'in Accessibility tab.',
+        'Game won’t launch? Try enabling Windows XP (Service Pack 3) compatibility mode in the Accessibility tab.',
       ],
       author_uk: 'СУМІСНІСТЬ',
-      author_en: 'COMPAT',
+      author_en: 'COMPATIBILITY',
     },
     {
       lines_uk: [

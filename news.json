@@ -1,5 +1,13 @@
 [
   {
+    "title_uk":   "✨ v1.0.5 — Полірування i18n і поради",
+    "title_en":   "✨ v1.0.5 — i18n polish + new tips",
+    "excerpt_uk": "Уточнено формулювання в Settings → General, Saves, Log і About. Поради в картці на головній переписано (включно з порадою про внутрішньоігрові цигарки) і повністю локалізовано. Картка порад збільшена до 270px, щоб довгі тексти повністю вміщувалися.",
+    "excerpt_en": "Refined wording in Settings → General, Saves, Log and About. Hero tip card rewritten (including a tip about the in-game cigarettes) and fully localized. Tip card grown to 270px so longer texts fit without truncation.",
+    "date":       "May 18, 2026",
+    "url":        "https://github.com/LittleBitUA/DP1-Launcher/releases/tag/v1.0.5"
+  },
+  {
     "title_uk":   "🌍 v1.0.4 — Повна локалізація",
     "title_en":   "🌍 v1.0.4 — Full localization",
     "excerpt_uk": "Першорун-візард, Settings (Accessibility / Saves / Log), About і всі модалки тепер повністю двомовні. Перемикач у Settings → General миттєво змінює всі написи. Renderer-toasti та notes теж через t().",

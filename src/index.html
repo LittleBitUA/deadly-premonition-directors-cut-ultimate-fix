@@ -120,18 +120,27 @@
 
     <!-- ─────────── GameTipsCard (rotating troubleshooting tips) ─────────── -->
     <section class="quote-card" id="quote-card">
-      <div class="quote-head">
-        <span class="quote-marker">”</span>
-        <svg class="quote-tip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M12 2a7 7 0 0 0-4 12.7V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.3A7 7 0 0 0 12 2z"/>
-          <path d="M9 22h6"/>
-        </svg>
-      </div>
+      <svg class="quote-tip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 2a7 7 0 0 0-4 12.7V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.3A7 7 0 0 0 12 2z"/>
+        <path d="M9 22h6"/>
+      </svg>
       <div class="quote-label" data-i18n="tips.label">GAME TIPS</div>
       <div class="quote-text" id="quote-text"></div>
       <div class="quote-author" id="quote-author"></div>
-      <div class="quote-dots" id="quote-dots"></div>
+      <div class="quote-nav">
+        <button class="quote-arrow" id="quote-prev" title="Previous tip" aria-label="Previous tip">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 18l-6-6 6-6"/>
+          </svg>
+        </button>
+        <div class="quote-dots" id="quote-dots"></div>
+        <button class="quote-arrow" id="quote-next" title="Next tip" aria-label="Next tip">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </button>
+      </div>
     </section>
 
     <!-- ─────────── HeroSection (centered title + LAUNCH) ─────────── -->
@@ -150,7 +159,7 @@
               <path d="M7 5v14l12-7z"/>
             </svg>
           </span>
-          <span class="btn-launch-label">LAUNCH</span>
+          <span class="btn-launch-label" data-i18n="hero.launch">LAUNCH</span>
         </button>
       </div>
 
@@ -435,8 +444,8 @@
           <!-- SAVES (formerly Advanced) -->
           <section class="settings-section" data-section="advanced">
             <p class="settings-help" data-i18n-html="saves.help">
-              Лаунчер автоматично робить резервні копії вашого <code>dp.sav</code>
-              кожні 2 хвилини, щоб ви не втратили прогрес при вильотах.
+              Автоматичне резервне копіювання <code>dp.sav</code>
+              кожні 2 хвилини захищає ваш прогрес у разі вильоту гри.
             </p>
 
             <div class="form-row">
@@ -458,8 +467,8 @@
           <!-- LOG  (full activity history) -->
           <section class="settings-section" data-section="log">
             <p class="settings-help" data-i18n="log.help">
-              Журнал подій лаунчера: запуски, збереження налаштувань, встановлення компонентів,
-              застосовані патчі. Зберігаються останні 200 записів.
+              Журнал подій лаунчера: запуски, налаштування, компоненти й патчі.
+              Зберігає останні 200 записів.
             </p>
             <div class="log-actions">
               <button class="btn-secondary" id="btn-log-clear">
@@ -492,11 +501,11 @@
               </div>
 
               <p class="about-intro" data-i18n-html="about.intro">
-                Це <strong>фанатський лаунчер</strong>, створений з єдиною метою — зробити
-                ігровий досвід <em>Deadly Premonition: The Director's Cut</em> максимально
-                комфортним: одне натискання LAUNCH замість години ритуалу з DPfix, 4GB-патчем,
-                DXVK і танцями навколо реєстру. Усі необхідні компоненти лаунчер завантажує
-                та встановлює сам.
+                Це <strong>фанатський лаунчер</strong>, створений з однією метою: зробити
+                гру <em>Deadly Premonition: The Director's Cut</em> максимально
+                комфортною. Одне натискання кнопки LAUNCH замість годинного ритуалу з DPfix,
+                4GB Patch, DXVK і налаштуваннями реєстру. Усі необхідні компоненти лаунчер
+                завантажує та встановлює автоматично.
               </p>
 
               <h4 class="about-subhead" data-i18n="about.components">Що використовується</h4>
@@ -540,9 +549,10 @@
               </div>
 
               <p class="about-disclaimer" data-i18n="about.disclaimer">
-                Лаунчер не афілійований із Access Games / Rising Star Games / Toybox Inc.
-                Усі права на гру належать правовласникам. Цей проєкт — фанатська
-                ініціатива, безкоштовно і з відкритою душею.
+                Цей лаунчер не пов’язаний, не схвалений і не підтримується компаніями
+                Access Games, Rising Star Games або Toybox Inc. Усі права на
+                Deadly Premonition: The Director's Cut належать відповідним правовласникам.
+                Це безкоштовний фанатський проєкт, створений з відкритим серцем.
               </p>
 
             </div>
