@@ -619,7 +619,7 @@ async function toggleCompat(mode) {
         window.electronAPI.removeCompat(launchExe),
       ]);
       if (note) { note.textContent = mode === 'win98'
-        ? '✓ Win 98 / Me знято.' : '✓ XP SP3 знято.';
+        ? t('compat.note.removed98') : t('compat.note.removedXP');
         note.className = 'compat-note ok'; }
     } else {
       await Promise.all([
@@ -627,8 +627,7 @@ async function toggleCompat(mode) {
         window.electronAPI.setCompat(launchExe,      mode),
       ]);
       if (note) { note.textContent = mode === 'win98'
-        ? '✓ Win 98 / Me застосовано до обох файлів.'
-        : '✓ XP SP3 застосовано до обох файлів.';
+        ? t('compat.note.applied98') : t('compat.note.appliedXP');
         note.className = 'compat-note ok'; }
       logActivity('completed', `Compat → ${mode}`);
     }
@@ -1437,7 +1436,8 @@ function acceptDetected(hit) {
   dirCard?.classList.remove('error');
   dirCard?.classList.add('ok');
   $('firstrun-dir-path').textContent = hit.dir;
-  $('firstrun-dir-hint').textContent = `${hit.exePath.split(/[\\/]/).pop()} знайдено ✓`;
+  $('firstrun-dir-hint').textContent =
+    t('fr.exeFound').replace('{name}', hit.exePath.split(/[\\/]/).pop());
   $('btn-firstrun-install').disabled = false;
 }
 
@@ -1449,13 +1449,14 @@ function setupFirstRunModal() {
     $('firstrun-dir-path').textContent = r.dir;
     if (r.valid) {
       dirCard?.classList.remove('error'); dirCard?.classList.add('ok');
-      $('firstrun-dir-hint').textContent = `${r.exePath.split(/[\\/]/).pop()} знайдено ✓`;
+      $('firstrun-dir-hint').textContent =
+        t('fr.exeFound').replace('{name}', r.exePath.split(/[\\/]/).pop());
       $('btn-firstrun-install').disabled = false;
       firstRunState.gameDir = r.dir;
       firstRunState.exePath = r.exePath;
     } else {
       dirCard?.classList.remove('ok'); dirCard?.classList.add('error');
-      $('firstrun-dir-hint').textContent = 'У папці немає DP.exe чи DeadlyPremonition.exe — невірна директорія.';
+      $('firstrun-dir-hint').textContent = t('fr.exeMissing');
       $('btn-firstrun-install').disabled = true;
     }
   });
@@ -1502,18 +1503,18 @@ async function applyPatch4GB() {
   if (!firstRunState.gameDir || !firstRunState.exePath) return;
 
   card.classList.remove('done', 'error'); card.classList.add('working');
-  status.textContent = 'Запускаю 4gb_patch.exe…';
+  status.textContent = t('fr.running4gb');
   btn.disabled = true;
 
   const r = await window.electronAPI.apply4gbAuto(firstRunState.gameDir, firstRunState.exePath);
   if (r?.success) {
     card.classList.remove('working'); card.classList.add('done');
-    status.textContent = '✓ 4GB patch застосовано до ' + firstRunState.exePath.split(/[\\/]/).pop();
-    btn.textContent = 'Готово';
+    status.textContent = t('fr.done4gb') + firstRunState.exePath.split(/[\\/]/).pop();
+    btn.textContent = t('fr.doneBtn');
     logActivity('completed', '4GB Patch applied');
   } else {
     card.classList.remove('working'); card.classList.add('error');
-    status.textContent = 'Помилка: ' + (r?.error || 'unknown');
+    status.textContent = t('fr.statusError') + (r?.error || 'unknown');
     btn.disabled = false;
   }
 }
@@ -1525,18 +1526,18 @@ async function applyPatchDXVK() {
   if (!firstRunState.gameDir) return;
 
   card.classList.remove('done', 'error'); card.classList.add('working');
-  status.textContent = 'Копіюю d9vk.dll до SysWOW64 та патчу d3d9.dll…';
+  status.textContent = t('fr.copyingDxvk');
   btn.disabled = true;
 
   const r = await window.electronAPI.applyDxvkAuto(firstRunState.gameDir);
   if (r?.success) {
     card.classList.remove('working'); card.classList.add('done');
-    status.textContent = `✓ DXVK активовано (заміна посилань: ${r.replacements ?? '?'})`;
-    btn.textContent = 'Готово';
+    status.textContent = t('fr.doneDxvk').replace('{count}', r.replacements ?? '?');
+    btn.textContent = t('fr.doneBtn');
     logActivity('completed', 'DXVK applied');
   } else {
     card.classList.remove('working'); card.classList.add('error');
-    status.textContent = 'Помилка: ' + (r?.error || 'unknown');
+    status.textContent = t('fr.statusError') + (r?.error || 'unknown');
     btn.disabled = false;
   }
 }
@@ -1594,21 +1595,21 @@ function updateFirstRunComponent(msg) {
     case 'extracting':
       el.classList.add('downloading');
       if (fillEl)   fillEl.style.width = '100%';
-      if (statusEl) statusEl.textContent = 'Розпакування…';
+      if (statusEl) statusEl.textContent = t('fr.statusExtracting');
       break;
     case 'skipped':
       el.classList.add('done');
       if (fillEl)   fillEl.style.width = '100%';
-      if (statusEl) statusEl.textContent = 'Вже встановлено ✓';
+      if (statusEl) statusEl.textContent = t('fr.statusInstalled');
       break;
     case 'done':
       el.classList.add('done');
       if (fillEl)   fillEl.style.width = '100%';
-      if (statusEl) statusEl.textContent = 'Готово ✓';
+      if (statusEl) statusEl.textContent = t('fr.statusDone');
       break;
     case 'error':
       el.classList.add('error');
-      if (statusEl) statusEl.textContent = 'Помилка: ' + (msg.error || '');
+      if (statusEl) statusEl.textContent = t('fr.statusError') + (msg.error || '');
       break;
   }
 }

@@ -408,13 +408,14 @@
             <div class="compat-admin-banner" id="compat-admin-banner">
               <span class="compat-admin-icon">⚠</span>
               <div class="compat-admin-text">
-                <strong>Administrator Rights Required</strong>
-                <span>Writing compat mode requires registry access.</span>
+                <strong data-i18n="accessibility.adminTitle">Administrator Rights Required</strong>
+                <span data-i18n="accessibility.adminDesc">Writing compat mode requires registry access.</span>
               </div>
-              <button class="btn-relaunch-admin" id="btn-relaunch-admin">Relaunch as Admin</button>
+              <button class="btn-relaunch-admin" id="btn-relaunch-admin"
+                      data-i18n="accessibility.relaunchAdmin">Relaunch as Admin</button>
             </div>
 
-            <h4 class="form-subhead">Windows Compatibility Mode</h4>
+            <h4 class="form-subhead" data-i18n="accessibility.compatMode">Windows Compatibility Mode</h4>
             <div class="compat-target-row">
               <span class="compat-filename">DeadlyPremonition.exe</span>
               <span class="compat-status" id="compat-status-dp">—</span>
@@ -424,8 +425,8 @@
               <span class="compat-status" id="compat-status-launcher">—</span>
             </div>
             <div class="compat-actions">
-              <button class="btn-primary"   id="btn-compat-toggle" disabled>Apply XP SP3</button>
-              <button class="btn-secondary" id="btn-compat-win98"  disabled>Apply Win 98 / Me</button>
+              <button class="btn-primary"   id="btn-compat-toggle" disabled data-i18n="accessibility.applyXP">Apply XP SP3</button>
+              <button class="btn-secondary" id="btn-compat-win98"  disabled data-i18n="accessibility.apply98">Apply Win 98 / Me</button>
             </div>
             <p class="compat-note" id="compat-note"></p>
 
@@ -433,30 +434,30 @@
 
           <!-- SAVES (formerly Advanced) -->
           <section class="settings-section" data-section="advanced">
-            <p class="settings-help">
+            <p class="settings-help" data-i18n-html="saves.help">
               Лаунчер автоматично робить резервні копії вашого <code>dp.sav</code>
               кожні 2 хвилини, щоб ви не втратили прогрес при вильотах.
             </p>
 
             <div class="form-row">
-              <span class="form-label">Auto-Save Backup</span>
+              <span class="form-label" data-i18n="saves.autoLabel">Auto-Save Backup</span>
               <label class="form-toggle">
                 <input type="checkbox" id="autosave-toggle" checked>
                 <span class="form-toggle-track"><span class="form-toggle-thumb"></span></span>
-                <span class="form-toggle-label" id="autosave-label">On</span>
+                <span class="form-toggle-label" id="autosave-label" data-i18n="saves.on">On</span>
               </label>
             </div>
             <p class="compat-note" id="autosave-note"></p>
 
-            <h4 class="form-subhead">Резервні копії</h4>
+            <h4 class="form-subhead" data-i18n="saves.listHeader">Резервні копії</h4>
             <div class="saves-list" id="saves-list">
-              <p class="settings-placeholder" id="saves-empty">Резервних копій поки немає.</p>
+              <p class="settings-placeholder" id="saves-empty" data-i18n="saves.empty">Резервних копій поки немає.</p>
             </div>
           </section>
 
           <!-- LOG  (full activity history) -->
           <section class="settings-section" data-section="log">
-            <p class="settings-help">
+            <p class="settings-help" data-i18n="log.help">
               Журнал подій лаунчера: запуски, збереження налаштувань, встановлення компонентів,
               застосовані патчі. Зберігаються останні 200 записів.
             </p>
@@ -466,7 +467,7 @@
                      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6M5 6l1 14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-14"/>
                 </svg>
-                Очистити журнал
+                <span data-i18n="log.clear">Очистити журнал</span>
               </button>
             </div>
             <ul class="activity-list activity-list-full" id="activity-list"></ul>
@@ -490,7 +491,7 @@
                 </div>
               </div>
 
-              <p class="about-intro">
+              <p class="about-intro" data-i18n-html="about.intro">
                 Це <strong>фанатський лаунчер</strong>, створений з єдиною метою — зробити
                 ігровий досвід <em>Deadly Premonition: The Director's Cut</em> максимально
                 комфортним: одне натискання LAUNCH замість години ритуалу з DPfix, 4GB-патчем,
@@ -498,12 +499,12 @@
                 та встановлює сам.
               </p>
 
-              <h4 class="about-subhead">Що використовується</h4>
+              <h4 class="about-subhead" data-i18n="about.components">Що використовується</h4>
               <ul class="about-credits">
                 <li>
                   <span class="about-credit-name">DPFix v0.9.5</span>
                   <span class="about-credit-by">Peter «Durante» Thoman</span>
-                  <span class="about-credit-desc">
+                  <span class="about-credit-desc" data-i18n="about.dpfixDesc">
                     Графічний фіксер — кастомні роздільні здатності, anti-aliasing,
                     тіні, SSAO, виправлення інтерфейсу.
                   </span>
@@ -511,34 +512,34 @@
                 <li>
                   <span class="about-credit-name">4GB LAA Patch</span>
                   <span class="about-credit-by">NTCore (Daniel Pistelli)</span>
-                  <span class="about-credit-desc">
+                  <span class="about-credit-desc" data-i18n="about.fourGbDesc">
                     Знімає обмеження 2 ГБ оперативної пам'яті для 32-бітного процесу гри.
                   </span>
                 </li>
                 <li>
                   <span class="about-credit-name">DXVK 2.7.1</span>
                   <span class="about-credit-by">Philip «doitsujin» Rebohle</span>
-                  <span class="about-credit-desc">
+                  <span class="about-credit-desc" data-i18n="about.dxvkDesc">
                     Vulkan-рендерер для Direct3D 9 — стабільність, продуктивність,
                     сучасний рендеринг замість застарілих DirectX-викликів.
                   </span>
                 </li>
               </ul>
 
-              <h4 class="about-subhead">Автор лаунчера</h4>
+              <h4 class="about-subhead" data-i18n="about.author">Автор лаунчера</h4>
               <div class="about-author">
-                <p>
+                <p data-i18n-html="about.authorLine">
                   <strong>Dmytro Bidlov</strong> — створено з любов'ю від
                   <span class="about-ua">української 🇺🇦 спільноти фанатів</span>
                   <em>Deadly Premonition</em>.
                 </p>
-                <p class="about-thanks">
+                <p class="about-thanks" data-i18n="about.thanks">
                   Спасибі Swery (Hidetaka Suehiro) за безсмертну, абсурдну і
                   щемливу гру.
                 </p>
               </div>
 
-              <p class="about-disclaimer">
+              <p class="about-disclaimer" data-i18n="about.disclaimer">
                 Лаунчер не афілійований із Access Games / Rising Star Games / Toybox Inc.
                 Усі права на гру належать правовласникам. Цей проєкт — фанатська
                 ініціатива, безкоштовно і з відкритою душею.
@@ -689,24 +690,23 @@
           </svg>
         </div>
         <div>
-          <h2 class="firstrun-title">Раді Вас бачити!</h2>
-          <p class="firstrun-sub">Налаштуємо вашу гру за хвилину</p>
+          <h2 class="firstrun-title" data-i18n="fr.welcome">Раді Вас бачити!</h2>
+          <p class="firstrun-sub" data-i18n="fr.sub">Налаштуємо вашу гру за хвилину</p>
         </div>
       </header>
 
       <!-- Step indicator -->
       <div class="firstrun-stepper">
-        <div class="step-bubble active" data-step="1"><span>1</span><label>Завантаження</label></div>
+        <div class="step-bubble active" data-step="1"><span>1</span><label data-i18n="fr.step1">Завантаження</label></div>
         <div class="step-link"></div>
-        <div class="step-bubble" data-step="2"><span>2</span><label>Налаштування</label></div>
+        <div class="step-bubble" data-step="2"><span>2</span><label data-i18n="fr.step2">Налаштування</label></div>
         <div class="step-link"></div>
-        <div class="step-bubble" data-step="3"><span>3</span><label>Готово</label></div>
+        <div class="step-bubble" data-step="3"><span>3</span><label data-i18n="fr.step3">Готово</label></div>
       </div>
 
       <!-- Step 1 — path + downloads -->
       <div class="firstrun-step-body" data-step-body="1">
-
-      <p class="firstrun-intro">
+      <p class="firstrun-intro" data-i18n-html="fr.intro">
         Перш ніж розпочати, вкажіть папку з <code>DeadlyPremonition.exe</code>
         і завантажимо все необхідне для гри.
       </p>
@@ -714,7 +714,7 @@
       <section class="firstrun-step">
         <div class="firstrun-step-head">
           <span class="firstrun-step-num">1</span>
-          <span>Папка гри</span>
+          <span data-i18n="fr.gameFolder">Папка гри</span>
         </div>
         <!-- Auto-detect banner (shown if game found in Steam libraries) -->
         <div class="firstrun-detect hidden" id="firstrun-detect">
@@ -726,10 +726,11 @@
             </svg>
           </div>
           <div class="firstrun-detect-info">
-            <div class="firstrun-detect-title">Знайдено гру у Steam</div>
+            <div class="firstrun-detect-title" data-i18n="fr.detected">Знайдено гру у Steam</div>
             <div class="firstrun-detect-path" id="firstrun-detect-path">—</div>
           </div>
-          <button class="btn-primary firstrun-detect-use" id="btn-firstrun-use-detected">
+          <button class="btn-primary firstrun-detect-use" id="btn-firstrun-use-detected"
+                  data-i18n="fr.useDetected">
             Використати
           </button>
         </div>
@@ -742,19 +743,19 @@
             </svg>
           </div>
           <div class="firstrun-dir-info">
-            <div class="firstrun-dir-path" id="firstrun-dir-path">— ще не вибрано —</div>
-            <div class="firstrun-dir-hint" id="firstrun-dir-hint">
+            <div class="firstrun-dir-path" id="firstrun-dir-path" data-i18n="fr.notSelected">— ще не вибрано —</div>
+            <div class="firstrun-dir-hint" id="firstrun-dir-hint" data-i18n-html="fr.expectExe">
               Очікується <code>DP.exe</code> або <code>DeadlyPremonition.exe</code>
             </div>
           </div>
-          <button class="btn-secondary" id="btn-firstrun-pick">Огляд</button>
+          <button class="btn-secondary" id="btn-firstrun-pick" data-i18n="fr.browse">Огляд</button>
         </div>
       </section>
 
       <section class="firstrun-step">
         <div class="firstrun-step-head">
           <span class="firstrun-step-num">2</span>
-          <span>Компоненти для встановлення</span>
+          <span data-i18n="fr.componentsHeader">Компоненти для встановлення</span>
         </div>
         <div class="firstrun-comps">
           <div class="firstrun-comp" id="frc-dpfix">
@@ -766,7 +767,7 @@
             </div>
             <div class="firstrun-comp-info">
               <div class="firstrun-comp-name">DPFix v0.9.5 <span class="firstrun-comp-author">· Durante</span></div>
-              <div class="firstrun-comp-status">Очікує</div>
+              <div class="firstrun-comp-status" data-i18n="fr.statusWaiting">Очікує</div>
               <div class="firstrun-comp-bar"><div class="firstrun-comp-fill"></div></div>
             </div>
           </div>
@@ -780,7 +781,7 @@
             </div>
             <div class="firstrun-comp-info">
               <div class="firstrun-comp-name">4GB LAA Patch <span class="firstrun-comp-author">· NTCore</span></div>
-              <div class="firstrun-comp-status">Очікує</div>
+              <div class="firstrun-comp-status" data-i18n="fr.statusWaiting">Очікує</div>
               <div class="firstrun-comp-bar"><div class="firstrun-comp-fill"></div></div>
             </div>
           </div>
@@ -793,7 +794,7 @@
             </div>
             <div class="firstrun-comp-info">
               <div class="firstrun-comp-name">DXVK v2.7.1 <span class="firstrun-comp-author">· doitsujin</span></div>
-              <div class="firstrun-comp-status">Очікує</div>
+              <div class="firstrun-comp-status" data-i18n="fr.statusWaiting">Очікує</div>
               <div class="firstrun-comp-bar"><div class="firstrun-comp-fill"></div></div>
             </div>
           </div>
@@ -806,14 +807,14 @@
                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 4v12m0 0l-5-5m5 5l5-5M5 20h14"/>
           </svg>
-          <span>Завантажити та встановити</span>
+          <span data-i18n="fr.install">Завантажити та встановити</span>
         </button>
       </footer>
       </div><!-- /step-body=1 -->
 
       <!-- Step 2 — optional patches -->
       <div class="firstrun-step-body" data-step-body="2">
-        <p class="firstrun-intro">
+        <p class="firstrun-intro" data-i18n="fr.step2Intro">
           Тепер можна застосувати додаткові патчі. Це необов'язково, але рекомендовано
           для стабільної роботи гри.
         </p>
@@ -830,14 +831,14 @@
               </svg>
             </div>
             <div class="firstrun-comp-info">
-              <div class="firstrun-comp-name">Застосувати 4GB Patch</div>
-              <div class="firstrun-patch-desc">
+              <div class="firstrun-comp-name" data-i18n="fr.apply4gb">Застосувати 4GB Patch</div>
+              <div class="firstrun-patch-desc" data-i18n-html="fr.apply4gbDesc">
                 Знімає обмеження 2 ГБ оперативної пам'яті для <code>DP.exe</code>.
                 Без цього гра може вилітати на сучасних системах.
               </div>
               <div class="firstrun-patch-status" id="patch-4gb-status">—</div>
             </div>
-            <button class="btn-primary firstrun-patch-btn" id="btn-apply-4gb">Так</button>
+            <button class="btn-primary firstrun-patch-btn" id="btn-apply-4gb" data-i18n="fr.yes">Так</button>
           </div>
 
           <!-- DXVK card -->
@@ -849,22 +850,22 @@
               </svg>
             </div>
             <div class="firstrun-comp-info">
-              <div class="firstrun-comp-name">Застосувати DXVK</div>
-              <div class="firstrun-patch-desc">
+              <div class="firstrun-comp-name" data-i18n="fr.applyDxvk">Застосувати DXVK</div>
+              <div class="firstrun-patch-desc" data-i18n-html="fr.applyDxvkDesc">
                 Vulkan-рендерер для Direct3D 9 — підвищує стабільність та FPS.
                 Копіює <code>d9vk.dll</code> до SysWOW64 і патчить
                 <code>d3d9.dll</code> у грі. Потрібні права адміністратора.
               </div>
               <div class="firstrun-patch-status" id="patch-dxvk-status">—</div>
             </div>
-            <button class="btn-primary firstrun-patch-btn" id="btn-apply-dxvk">Так</button>
+            <button class="btn-primary firstrun-patch-btn" id="btn-apply-dxvk" data-i18n="fr.yes">Так</button>
           </div>
 
         </div>
 
         <footer class="firstrun-actions firstrun-actions-step2">
-          <button class="btn-secondary" id="btn-firstrun-back">Назад</button>
-          <button class="btn-primary"   id="btn-firstrun-next-3">Далі</button>
+          <button class="btn-secondary" id="btn-firstrun-back"   data-i18n="fr.back">Назад</button>
+          <button class="btn-primary"   id="btn-firstrun-next-3" data-i18n="fr.next">Далі</button>
         </footer>
       </div><!-- /step-body=2 -->
 
@@ -878,12 +879,13 @@
               <circle cx="12" cy="12" r="9"/>
             </svg>
           </div>
-          <h3 class="firstrun-done-title">Все готово!</h3>
-          <p class="firstrun-done-text">
+          <h3 class="firstrun-done-title" data-i18n="fr.allDone">Все готово!</h3>
+          <p class="firstrun-done-text" data-i18n-html="fr.allDoneText">
             Ваш Deadly Premonition налаштований і готовий до запуску.<br>
             Натисніть кнопку нижче, щоб перейти до лаунчера.
           </p>
-          <button class="btn-primary firstrun-done-btn" id="btn-firstrun-finish">
+          <button class="btn-primary firstrun-done-btn" id="btn-firstrun-finish"
+                  data-i18n="fr.finish">
             Перейти до лаунчера
           </button>
         </div>
@@ -903,9 +905,10 @@
             <rect x="3" y="5" width="18" height="14" rx="2"/>
             <path d="M3 9h18M7 13h6M7 16h4"/>
           </svg>
-          <span>LATEST NEWS</span>
+          <span data-i18n="dash.latestNews">LATEST NEWS</span>
         </div>
-        <button class="news-modal-close" id="btn-news-close" title="Close">
+        <button class="news-modal-close" id="btn-news-close" title="Close"
+                data-i18n-title="newsModal.close">
           <svg viewBox="0 0 18 18">
             <line x1="4" y1="4" x2="14" y2="14" stroke="currentColor" stroke-width="1.4"/>
             <line x1="14" y1="4" x2="4" y2="14" stroke="currentColor" stroke-width="1.4"/>
@@ -928,11 +931,11 @@
           <path d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
         </svg>
       </div>
-      <h3 class="confirm-title" id="confirm-title">Підтвердити дію?</h3>
+      <h3 class="confirm-title" id="confirm-title" data-i18n="confirm.title">Підтвердити дію?</h3>
       <p class="confirm-text"  id="confirm-text">—</p>
       <div class="confirm-actions">
-        <button class="btn-secondary" id="btn-confirm-cancel">Скасувати</button>
-        <button class="btn-primary"   id="btn-confirm-ok">Підтвердити</button>
+        <button class="btn-secondary" id="btn-confirm-cancel" data-i18n="confirm.cancel">Скасувати</button>
+        <button class="btn-primary"   id="btn-confirm-ok"     data-i18n="confirm.ok">Підтвердити</button>
       </div>
     </div>
   </div>
